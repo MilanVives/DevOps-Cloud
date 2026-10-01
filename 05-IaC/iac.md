@@ -1517,37 +1517,60 @@ resource "google_compute_instance" "vm" {
 ```
 
 #### 3. Provisioners
+
+**Wat is een provisioner?**
+
+Terraform **maakt** infrastructuur aan (bv. een VM), maar installeert er niets op. Een **provisioner** is een extra actie die Terraform uitvoert **net nadat** een resource aangemaakt is. Bijvoorbeeld: een script naar de nieuwe VM kopiëren en uitvoeren.
+
+Er zijn drie soorten:
+
+| Provisioner | Waar wordt het uitgevoerd? | Voorbeeld |
+|-------------|----------------------------|-----------|
+| `file` | Kopieert van **je laptop** naar **de nieuwe VM** (via SSH) | `script.sh` naar de VM kopiëren |
+| `remote-exec` | Op **de nieuwe VM** (via SSH) | Het script uitvoeren |
+| `local-exec` | Op **je eigen laptop** | Het IP van de nieuwe VM in een Ansible `hosts` bestand schrijven |
+
+Voor `file` en `remote-exec` moet Terraform kunnen inloggen op de VM. Dat beschrijf je in een `connection` blok. `self` betekent hier "deze resource zelf", dus de VM die net aangemaakt is.
+
 ```hcl
 resource "google_compute_instance" "web" {
-  # ... instance configuration
+  # ... instance configuratie (naam, machine type, disk, netwerk)
 
-  # File provisioner
+  # Hoe moet Terraform inloggen op deze VM? (geldt voor alle provisioners hieronder)
+  connection {
+    type        = "ssh"
+    user        = var.ssh_user
+    private_key = file("~/.ssh/id_rsa")
+    host        = self.network_interface[0].access_config[0].nat_ip
+  }
+
+  # 1. Kopieer script.sh van je laptop naar de nieuwe VM
   provisioner "file" {
     source      = "script.sh"
     destination = "/tmp/script.sh"
-    
-    connection {
-      type     = "ssh"
-      user     = var.ssh_user
-      host     = self.network_interface.0.access_config.0.nat_ip
-    }
   }
 
-  # Remote exec provisioner
+  # 2. Voer het script uit OP de nieuwe VM
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/script.sh",
       "/tmp/script.sh",
     ]
-    
-    connection {
-      type     = "ssh"
-      user     = var.ssh_user
-      host     = self.network_interface.0.access_config.0.nat_ip
-    }
+  }
+
+  # 3. Voer een commando uit op JE EIGEN laptop: schrijf het IP naar een Ansible inventory
+  provisioner "local-exec" {
+    command = "echo ${self.network_interface[0].access_config[0].nat_ip} > hosts"
   }
 }
 ```
+
+**Goed om te weten:**
+- Provisioners draaien **enkel bij het aanmaken** van de resource. Pas je later `script.sh` aan en doe je opnieuw `tofu apply`, dan gebeurt er **niets** op de bestaande VM.
+- Faalt een provisioner, dan markeert Terraform de VM als "tainted" (beschadigd). Bij de volgende `apply` wordt hij verwijderd en opnieuw aangemaakt.
+- Terraform zelf raadt provisioners aan als **laatste redmiddel**. Voor software installeren zijn er betere opties:
+  - een **startup script** dat de VM zelf uitvoert bij het opstarten (bij GCP: `metadata_startup_script`)
+  - **Ansible**, zoals in [Deel 3: Ansible + Terraform Integratie](#deel-3-ansible--terraform-integratie): Terraform maakt de VM, Ansible configureert hem
 
 #### 4. Conditionals en Functions
 ```hcl
