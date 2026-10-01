@@ -1,3 +1,11 @@
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"
+    }
+  }
+}
+
 variable "gce_ssh_user" {}
 variable "gce_ssh_pub_key_file" {}
 variable "gcp_project" {}
@@ -18,11 +26,11 @@ resource "google_compute_address" "static" {
 
 resource "google_compute_instance" "vm_instance" {
   name         = "opentofu-instance"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-focal-v20210415"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 

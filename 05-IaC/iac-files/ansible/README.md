@@ -14,7 +14,10 @@ This folder contains Ansible configuration and playbooks for automating tasks on
 
 - Place all Ansible-related files in this `ansible/` directory.
 - The inventory file (`hosts`) should be in this folder and referenced with `-i hosts` in commands.  
-  If the file is located in `/etc/ansible/hosts`, it does not need to be referenced with `-i hosts`.
+  If the file is located in `/etc/ansible/hosts` (the default location), it does not need to be referenced with `-i hosts`.
+- A `hosts` file in the current folder is **not** picked up automatically. Either use `-i hosts`, or add
+  `inventory = hosts` (on its own line, no trailing comment) under `[defaults]` in `ansible.cfg`.
+- Check which inventory Ansible sees with `ansible all --list-hosts` or `ansible-inventory --graph`.
 - Playbooks (`*.yml`) should also be in this folder.
 - The `ansible.cfg` file can be placed in:
   - The current working directory (recommended for project-specific settings)

@@ -1,5 +1,5 @@
 #list all hosts in the hosts inventory
-ansible all -list-hosts
+ansible all --list-hosts
 
 #ping all hosts in the hosts inventory 
 ansible all -m ping

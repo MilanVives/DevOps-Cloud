@@ -12,6 +12,10 @@ Stel je voor: je moet 50 servers configureren, elk met dezelfde software, gebrui
 - Praktische hands-on ervaring met beide tools
 - Best practices voor IAC in productie omgevingen
 
+> **📖 Hoe lees je dit hoofdstuk?**
+> De gewone secties bevatten de **basis** die je nodig hebt voor de les en de labo's.
+> Secties met **🔍 Deep Dive** in de titel zijn **verdieping**: interessant als je verder wilt gaan, maar je hebt ze niet nodig om mee te kunnen. Sla ze gerust over bij een eerste lezing.
+
 ---
 
 ## Wat is Infrastructure as Code?
@@ -29,15 +33,31 @@ Infrastructure as Code (IAC) is het proces van het beheren en inrichten van comp
 
 ### IAC Tools categorieën
 
+Er bestaan vijf grote categorieën van IaC tools:
+
+| # | Categorie | Voorbeeld | Wat doet het? |
+|---|-----------|-----------|---------------|
+| 1 | **Ad hoc scripts** | Bash/shell script | Een reeks commando's automatisch na elkaar uitvoeren |
+| 2 | **Configuration management** | Ansible, Puppet, Chef | Bestaande servers configureren (software, users, instellingen) |
+| 3 | **Server templating** | Packer, VM images van de cloud provider | Een "kant-en-klare" image maken waarvan je servers start |
+| 4 | **Orchestration** | Kubernetes | Containers verdelen en beheren over meerdere machines |
+| 5 | **Provisioning** | Terraform, OpenTofu, CloudFormation | Nieuwe infrastructuur aanmaken (VMs, netwerken, databases) |
+
+In dit hoofdstuk focussen we op de twee belangrijkste:
+
 #### 1. **Configuration Management** (Ansible, Chef, Puppet)
 - Configureert bestaande servers
 - Installeert software, wijzigt instellingen
 - Zorgt voor consistency tussen servers
 
-#### 2. **Infrastructure Provisioning** (Terraform, CloudFormation)
+#### 2. **Infrastructure Provisioning** (Terraform, OpenTofu, CloudFormation)
 - Maakt nieuwe infrastructuur aan
 - Beheert cloud resources (VMs, netwerken, databases)
 - Lifecycle management van infrastructuur
+
+**Declaratief vs imperatief** (komt later uitgebreid terug):
+- **Declaratief** = je beschrijft de *gewenste eindtoestand*, de tool zorgt dat die bereikt wordt (Terraform)
+- **Imperatief** = je beschrijft het *stappenplan* dat uitgevoerd moet worden (Ansible playbook, shell script)
 
 ---
 
@@ -70,30 +90,121 @@ Control Node (je laptop/server)
 - **SSH-based**: Gebruikt bestaande SSH verbindingen
 - **YAML syntax**: Gemakkelijk leesbaar en schrijfbaar
 
+**Begrippen die je moet kennen:**
+
+| Begrip | Betekenis |
+|--------|-----------|
+| **Control node** | De machine waarop Ansible geïnstalleerd is en van waaruit je alles start (je laptop, een VM, WSL) |
+| **Managed node** | Een server die door Ansible beheerd wordt. Daar moet enkel **SSH** en **Python** op staan |
+| **Inventory** | Het bestand met de lijst van managed nodes (de "hosts") |
+| **Module** | Een klein stukje code met één beperkte taak (bv. `apt`, `copy`, `user`). Ansible kopieert het naar de server, voert het uit en verwijdert het daarna weer |
+| **Task** | Eén stap die één module aanroept |
+| **Play** | Een groep tasks met een specifiek doel, uitgevoerd op bepaalde hosts |
+| **Playbook** | Een YAML bestand met één of meerdere plays: **Playbook > Plays > Tasks** |
+
+> **💡 Windows gebruikers:** Ansible draait **niet** rechtstreeks op Windows als control node. Gebruik **WSL** (Windows Subsystem for Linux) of een Linux VM en installeer Ansible daarin.
+
 ### Ansible Installatie
 
+Je installeert Ansible **enkel op de control node**, niet op de servers die je beheert (agentless!).
+
 ```bash
-# Ubuntu/Debian
+# Ubuntu/Debian (ook in WSL)
 sudo apt update
 sudo apt install ansible
 
 # macOS
 brew install ansible
 
-# pip (alle systemen)
-pip install ansible
-
 # Verificatie
 ansible --version
 ```
 
+De output van `ansible --version` toont ook welk configuratiebestand Ansible gebruikt:
+
+```text
+ansible [core 2.16.3]
+  config file = None          ← er wordt (nog) geen ansible.cfg gebruikt
+  ...
+```
+
+Die regel `config file = ...` is later handig om te controleren of jouw `ansible.cfg` wel gevonden wordt.
+
 ### Ansible Componenten
 
 #### 1. Inventory File (hosts)
-Het inventory bestand definieert welke servers Ansible moet beheren:
+Het inventory bestand definieert welke servers Ansible moet beheren.
+
+##### 📍 Waar staat het inventory bestand?
+
+**De locatie is belangrijk!** Ansible zoekt niet zomaar overal naar een bestand met de naam `hosts`. Er zijn drie manieren om Ansible te vertellen waar je inventory staat:
+
+| Manier | Locatie | Hoe gebruik je het? |
+|--------|---------|---------------------|
+| **1. Standaard locatie** | `/etc/ansible/hosts` | Niets extra nodig: `ansible all -m ping` |
+| **2. Met de `-i` optie** | Eender waar, bv. `./hosts` in je projectmap | Altijd `-i` meegeven: `ansible all -i hosts -m ping` |
+| **3. Via `ansible.cfg`** | Eender waar, ingesteld met `inventory = hosts` | Niets extra nodig: `ansible all -m ping` |
+
+**Manier 1 - De standaard locatie `/etc/ansible/hosts`** (zoals in de slides)
+
+Als je niets opgeeft, kijkt Ansible **altijd** in `/etc/ansible/hosts`. Dit bestand is systeembreed, dus je hebt `sudo` nodig om het aan te passen:
+
+```bash
+# Map aanmaken als ze nog niet bestaat (bv. na installatie via brew)
+sudo mkdir -p /etc/ansible
+
+# Inventory bewerken
+sudo nano /etc/ansible/hosts
+
+# Controleren welke hosts Ansible ziet
+ansible all --list-hosts
+```
+
+**Manier 2 - Een eigen bestand met `-i`** (zoals in de bestanden van deze cursus)
+
+Je kan het inventory bestand ook gewoon in je projectmap zetten, naast je playbooks. Dan moet je bij **elk** commando met `-i` zeggen waar het staat:
+
+```bash
+cd 05-IaC/iac-files/ansible
+ansible all -i hosts --list-hosts
+ansible-playbook -i hosts playbook-createfile.yml
+```
+
+> **⚠️ Veelgemaakte fout:** Een bestand `hosts` in je huidige map wordt **niet** automatisch gebruikt! Vergeet je `-i hosts`, dan kijkt Ansible gewoon naar `/etc/ansible/hosts`. Is dat bestand leeg of bestaat het niet, dan krijg je:
+> ```text
+> [WARNING]: Unable to parse /etc/ansible/hosts as an inventory source
+> [WARNING]: No inventory was parsed, only implicit localhost is available
+> [WARNING]: provided hosts list is empty, only localhost is available. Note that
+> the implicit localhost does not match 'all'
+> ```
+> Zie je deze melding? Controleer dan waar je inventory staat en of je `-i` vergeten bent.
+
+**Manier 3 - Instellen in `ansible.cfg`**
+
+Wil je `-i hosts` niet telkens typen? Zet dan een `ansible.cfg` in je projectmap met:
 
 ```ini
-# 5-iac-files/ansible/hosts
+[defaults]
+inventory = hosts
+```
+
+Nu gebruikt Ansible automatisch de `hosts` file uit die map, **zolang je de commando's vanuit die map uitvoert**. Meer over `ansible.cfg` in de volgende sectie.
+
+**Welke kies je?**
+- Eén machine, voor jezelf, snel testen → `/etc/ansible/hosts` is prima
+- Project dat je in Git bijhoudt en deelt → inventory in de projectmap + `ansible.cfg` (of `-i`)
+
+Controleer altijd wat Ansible ziet met:
+
+```bash
+ansible all --list-hosts        # lijst van alle hosts
+ansible-inventory --graph       # hosts per groep, als boomstructuur
+```
+
+##### Inhoud van het inventory bestand
+
+```ini
+# 05-IaC/iac-files/ansible/hosts
 [mycloudvms]
 141.144.203.33
 projectwerk.vives.be
@@ -115,21 +226,90 @@ ansible_ssh_private_key_file=~/.ssh/id_rsa
 - `[mycloudvms]`: Groep van cloud VMs
 - `[ubuntu-servers]`: Groep Ubuntu servers
 - `:vars`: Variabelen voor de groep
+- `all`: Speciale groep die **automatisch** alle hosts bevat
+
+> **⚠️ Wachtwoorden in de inventory zijn géén best practice!** Het voorbeeld met `ansible_password` dient enkel als demo. Beter: werk met **SSH keys** en **niet** met de root gebruiker (zie het stappenplan hieronder).
+> Wil je toch met wachtwoorden werken, dan moet het programma `sshpass` op je control node staan (`sudo apt install sshpass`), anders faalt de verbinding.
 
 #### 2. Ansible Configuration (ansible.cfg)
+
+Met `ansible.cfg` stel je standaardwaarden in, zodat je ze niet bij elk commando moet meegeven.
+
+##### 📍 Waar staat ansible.cfg?
+
+Ansible zoekt het configuratiebestand op deze plaatsen, **in deze volgorde**. Het **eerste** bestand dat gevonden wordt, wordt gebruikt (de rest wordt genegeerd):
+
+| Volgorde | Locatie | Gebruik |
+|----------|---------|---------|
+| 1 | Variabele `ANSIBLE_CONFIG` | Als je die zelf instelt |
+| 2 | `./ansible.cfg` (huidige map) | **Aanbevolen**: per project |
+| 3 | `~/.ansible.cfg` (je home map) | Voor jouw gebruiker |
+| 4 | `/etc/ansible/ansible.cfg` | Systeembreed |
+
+Controleer welk bestand gebruikt wordt met `ansible --version` (regel `config file = ...`).
+
+> **⚠️ WSL tip:** Werk je in WSL in een map op je Windows schijf (`/mnt/c/...`)? Dan negeert Ansible een `ansible.cfg` in die map om veiligheidsredenen (de map is "world-writable"). Werk daarom in je Linux home map, bv. `~/ansible`.
+
+##### Voorbeeld ansible.cfg
+
 ```ini
 [defaults]
-host_key_checking = False
+# gebruik ./hosts als inventory (geen -i meer nodig)
 inventory = hosts
-remote_user = root
+# niet vragen om SSH fingerprints te bevestigen
+host_key_checking = False
+# standaard SSH gebruiker
+remote_user = ubuntu
+# welke SSH key gebruikt wordt
 private_key_file = ~/.ssh/id_rsa
-
-[ssh_connection]
-ssh_args = -o ControlMaster=auto -o ControlPersist=60s
 ```
 
+> **⚠️** Zet commentaar in `ansible.cfg` altijd op een **aparte regel**. Commentaar achter een waarde (`inventory = hosts  # uitleg`) wordt gelezen als deel van de waarde, en dan vindt Ansible je inventory niet meer.
+
+De versie in `05-IaC/iac-files/ansible/ansible.cfg` bevat enkel `host_key_checking = False`. Daar moet je de inventory dus nog met `-i hosts` meegeven.
+
+#### Stappenplan: van installatie tot eerste ping
+
+Dit is de volgorde die je volgt om met Ansible te starten:
+
+```bash
+# 1. Installeer Ansible op je control node
+sudo apt install ansible
+
+# 2. Maak je inventory aan (standaard locatie, of in je projectmap - zie hierboven)
+sudo nano /etc/ansible/hosts
+
+# 3. Controleer of Ansible je hosts ziet
+ansible all --list-hosts
+
+# 4. Zet je SSH public key op elke host (vraagt eenmalig het wachtwoord)
+ssh-keygen -t ed25519               # enkel als je nog geen SSH key hebt
+ssh-copy-id ubuntu@141.148.235.108  # herhaal voor elke host
+
+# 5. Ping test: kan Ansible alle hosts bereiken?
+ansible all -m ping
+```
+
+Een succesvolle ping ziet er zo uit:
+
+```text
+141.148.235.108 | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+```
+
+> **💡** De Ansible `ping` is geen gewone netwerk-ping: Ansible logt in via SSH en controleert of Python werkt op de server. `SUCCESS` betekent dus dat Ansible echt klaar is om taken uit te voeren.
+
 #### 3. Ad-hoc Commands
-Snelle commando's zonder playbooks:
+Snelle commando's zonder playbooks. De basis structuur is:
+
+```bash
+ansible <hosts of groep> -m <module> -a "<argumenten>"
+ansible <hosts of groep> -a "<linux commando>"      # zonder -m wordt de command module gebruikt
+```
+
+> In de voorbeelden hieronder staat `-i hosts` omdat de inventory in de projectmap staat. Gebruik je `/etc/ansible/hosts` of staat `inventory = hosts` in je `ansible.cfg`, dan mag je `-i hosts` weglaten.
 
 ```bash
 # Test connectiviteit
@@ -161,27 +341,32 @@ ansible all -i hosts -m user -a "name=devops shell=/bin/bash groups=sudo" --beco
 
 ### Ansible Playbooks
 
-Playbooks zijn YAML bestanden die complexe taken definiëren:
+Playbooks zijn YAML bestanden die complexe taken definiëren. Bij complexere configuraties heb je meerdere modules nodig die **sequentieel** (na elkaar, van boven naar onder) uitgevoerd worden. Die stappen groepeer je in een playbook.
 
 #### Basis Playbook structuur
 ```yaml
 ---
-- name: Playbook naam
-  hosts: doelgroep
-  become: yes  # sudo privileges
+- name: Playbook naam        # ← begin van een Play
+  hosts: doelgroep           # op welke hosts/groep uit de inventory?
+  remote_user: ubuntu        # met welke gebruiker inloggen? (optioneel)
+  become: yes                # taken uitvoeren met sudo
   vars:
     variabele: waarde
-  
+
   tasks:
-    - name: Task beschrijving
-      module:
+    - name: Task beschrijving  # ← één Task
+      module:                  # ← de module die de Task gebruikt
         parameter: waarde
 ```
+
+**Waar komen de `hosts` vandaan?** De waarde bij `hosts:` is de naam van een groep (of host) uit je **inventory**. `hosts: ubuntu-servers` werkt dus alleen als de groep `[ubuntu-servers]` in het inventory bestand staat dat Ansible gebruikt (zie [Waar staat het inventory bestand?](#-waar-staat-het-inventory-bestand)).
+
+> **⚠️ YAML = strikte indentatie!** Gebruik altijd **spaties**, nooit tabs, en lijn alles netjes uit. Eén spatie te veel of te weinig en je playbook werkt niet.
 
 #### Praktisch voorbeeld: Server Setup
 
 ```yaml
-# 5-iac-files/ansible/playbook.yaml
+# 05-IaC/iac-files/ansible/playbook.yaml
 ---
 - name: Example Playbook for Ubuntu Servers
   hosts: all
@@ -246,7 +431,7 @@ Playbooks zijn YAML bestanden die complexe taken definiëren:
 #### Simpel Playbook voorbeeld
 
 ```yaml
-# 5-iac-files/ansible/playbook-createfile.yml
+# 05-IaC/iac-files/ansible/playbook-createfile.yml
 ---
 - name: My playbook
   hosts: all
@@ -274,7 +459,9 @@ ansible-playbook -i hosts playbook.yaml --limit ubuntu-servers
 ansible-playbook -i hosts playbook.yaml -e "new_user=milan"
 ```
 
-### Geavanceerde Ansible Concepten
+### 🔍 Deep Dive: Geavanceerde Ansible Concepten
+
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
 
 #### 1. Variables en Templates
 ```yaml
@@ -350,7 +537,9 @@ tasks:
       - { name: apache2, state: absent }
 ```
 
-### Ansible Best Practices
+### 🔍 Deep Dive: Ansible Best Practices
+
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
 
 #### 1. Directory structuur
 ```
@@ -436,11 +625,11 @@ Terraform gebruikt een **declaratieve** programmeertaal (HCL - HashiCorp Configu
 resource "google_compute_instance" "web" {
   count        = 3
   name         = "web-server-${count.index}"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
   
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 }
@@ -489,6 +678,8 @@ Ansible gebruikt een **imperatieve** benadering via YAML playbooks. Je beschrijf
         name: nginx
         state: restarted
 ```
+
+> **Nuance:** veel Ansible modules beschrijven op zich wel een gewenste toestand (bv. `state: present` = "zorg dat nginx geïnstalleerd is"). Daardoor kan je een playbook veilig meerdere keren uitvoeren (idempotent). Maar het playbook als geheel blijft een **stappenplan** dat van boven naar onder uitgevoerd wordt.
 
 **Kenmerken van imperatieve benadering:**
 - ✅ **Stap-voor-stap**: Duidelijke volgorde van acties
@@ -601,6 +792,31 @@ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://
 sudo apt update && sudo apt install terraform
 ```
 
+> **💡 Terraform of OpenTofu?** De commando's zijn identiek, enkel de naam verschilt: `terraform plan` = `tofu plan`. In deze cursus gebruiken we `tofu`, maar alles werkt ook met `terraform`.
+
+### 📍 Waar staan de bestanden? (De projectmap)
+
+Net zoals bij Ansible is de **locatie belangrijk**. Terraform/OpenTofu werkt altijd met de **map waarin je het commando uitvoert**:
+
+- **Alle** `.tf` bestanden in die map worden samen ingelezen (de naam `main.tf` is een afspraak, geen verplichting)
+- Bestanden in submappen worden **niet** ingelezen
+- Een bestand met de naam `terraform.tfvars` wordt **automatisch** geladen
+
+Na `tofu init` en `tofu apply` ziet je projectmap er zo uit:
+
+```
+demoGCE/                      ← hier voer je alle tofu commando's uit
+├── main.tf                   ← jij schrijft: de infrastructuur
+├── terraform.tfvars          ← jij schrijft: jouw waarden voor de variabelen
+├── .terraform/               ← aangemaakt door tofu init: gedownloade providers
+├── .terraform.lock.hcl       ← aangemaakt door tofu init: vaste provider versies
+└── terraform.tfstate         ← aangemaakt door tofu apply: wat er effectief bestaat
+```
+
+> **⚠️ Veelgemaakte fout:** `tofu plan` uitvoeren in de verkeerde map. Je krijgt dan een foutmelding dat er geen configuratie is, of (erger) Terraform kijkt naar een **ander** project. Controleer met `pwd` en `ls` of je in de juiste map staat.
+
+> **⚠️ Niet in Git zetten:** `terraform.tfstate` en je service account key (`.json`) kunnen gevoelige gegevens bevatten. Zet ze in je `.gitignore`. Verwijder ook **nooit** handmatig je `terraform.tfstate` zolang je infrastructuur nog bestaat: dan weet Terraform niet meer wat het aangemaakt heeft.
+
 ### Terraform/OpenTofu Workflow
 
 ```
@@ -609,17 +825,19 @@ sudo apt update && sudo apt install terraform
   .tf files  tofu plan tofu apply tofu destroy
 ```
 
+Voordat je kan beginnen moet je de projectmap **eenmalig initialiseren** met `tofu init`. Dat downloadt de providers (bv. de Google provider) die in je code staan.
+
 #### 1. **Write**: Infrastructure definiëren
 ```hcl
 # main.tf
 resource "google_compute_instance" "web" {
   name         = "web-server"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
   zone         = "us-central1-a"
   
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 }
@@ -685,7 +903,9 @@ tofu destroy
 - ✅ **Team-friendly**: Iedereen kan zien wat er gebeurd is
 - ✅ **Kostenbesparing**: Geen vergeten resources
 
-#### **Gedetailleerd Destroy Proces**
+#### 🔍 Deep Dive: Gedetailleerd Destroy Proces
+
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's. Voor de basis volstaat `tofu destroy`.
 
 **1. Destroy planning (veilig):**
 ```bash
@@ -737,7 +957,7 @@ tofu destroy -var-file="production.tfvars"
 tofu destroy -var="environment=staging"
 ```
 
-#### **Best Practices voor Resource Cleanup**
+#### 🔍 Deep Dive: Best Practices voor Resource Cleanup
 
 **1. Altijd plan eerst:**
 ```bash
@@ -785,7 +1005,7 @@ tofu destroy -target=google_sql_database_instance.db
 tofu destroy  # Rest van infrastructure
 ```
 
-#### **Troubleshooting Destroy Issues**
+#### 🔍 Deep Dive: Troubleshooting Destroy Issues
 
 **1. Resource dependencies:**
 ```bash
@@ -816,7 +1036,7 @@ tofu import google_compute_instance.existing projects/PROJECT/zones/ZONE/instanc
 tofu destroy  # Dan kan destroy ze vinden
 ```
 
-#### **Cost Monitoring & Cleanup Automation**
+#### 🔍 Deep Dive: Cost Monitoring & Cleanup Automation
 
 **1. Automated cleanup scripts:**
 ```bash
@@ -882,16 +1102,28 @@ resource "resource_type" "resource_name" {
 
 # Outputs
 output "instance_ip" {
-  value = resource.resource_type.resource_name.public_ip
+  value = resource_type.resource_name.public_ip
 }
 ```
+
+Je verwijst naar een resource met `<type>.<naam>.<attribuut>`, bv. `google_compute_instance.vm_instance.name`, en naar een variabele met `var.<naam>`.
 
 ### Praktisch voorbeeld: Google Cloud Platform
 
 #### Basis GCP setup
 
 ```hcl
-# 5-iac-files/opentofu/demoGCE/main.tf
+# 05-IaC/iac-files/opentofu/demoGCE/main.tf
+
+# Settings: welke providers heeft dit project nodig?
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"   # verwijst naar de provider in de registry
+    }
+  }
+}
+
 variable "gce_ssh_user" {
   description = "SSH user for GCE instances"
 }
@@ -954,11 +1186,11 @@ resource "google_compute_firewall" "ssh-server" {
 # VM Instance
 resource "google_compute_instance" "vm_instance" {
   name         = "opentofu-instance"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-focal-v20210415"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 
@@ -990,8 +1222,10 @@ output "instance_name" {
 
 #### Variables file
 
+Het bestand `terraform.tfvars` staat **in dezelfde map** als `main.tf` en wordt automatisch ingelezen. Hierin vul je de waarden in voor de `variable` blokken uit `main.tf`:
+
 ```hcl
-# terraform.tfvars (create this file locally)
+# terraform.tfvars (in dezelfde map als main.tf)
 gce_ssh_user         = "ubuntu"
 gce_ssh_pub_key_file = "~/.ssh/id_rsa.pub"
 gcp_project          = "my-gcp-project"
@@ -1000,38 +1234,37 @@ gcp_zone             = "europe-west1-b"
 gcp_key_file         = "path/to/service-account-key.json"
 ```
 
+> **💡** Een relatief pad zoals `../accesskeyGCE/service-account.json` is relatief ten opzichte van de map waarin je `tofu` uitvoert.
+
 ### Terraform/OpenTofu Commando's
 
+De basis commando's, in de volgorde waarin je ze gebruikt (voer ze uit **in je projectmap**):
+
 ```bash
-# Project initialiseren
-tofu init
+tofu init        # map initialiseren: providers downloaden (eenmalig, of na het toevoegen van een provider)
+tofu fmt         # je .tf bestanden netjes formatteren
+tofu validate    # syntax controleren
+tofu plan        # bekijken wat er zal veranderen (verandert nog niets!)
+tofu apply       # wijzigingen effectief uitvoeren (bevestigen met: yes)
+tofu show        # de huidige state bekijken
+tofu output      # de outputs tonen (bv. het IP adres van je VM)
+tofu destroy     # alles wat dit project aangemaakt heeft opruimen (bevestigen met: yes)
+```
 
-# Configuratie valideren
-tofu validate
+#### 🔍 Deep Dive: Meer Terraform/OpenTofu commando's
 
-# Wijzigingen plannen
-tofu plan
+> **🔍 Deep Dive (optioneel):** Handig om te kennen, maar niet nodig voor de basis.
 
-# Plan opslaan
+```bash
+# Plan opslaan en later exact dat plan uitvoeren
 tofu plan -out=plan.tfplan
-
-# Plan uitvoeren
-tofu apply
-
-# Specifiek plan uitvoeren
 tofu apply plan.tfplan
-
-# Current state bekijken
-tofu show
 
 # State list
 tofu state list
 
-# Resource importeren
+# Resource importeren (bestaande resource onder beheer van Terraform brengen)
 tofu import google_compute_instance.web my-instance
-
-# Infrastructuur vernietigen
-tofu destroy
 
 # Plan destroy (safety check)
 tofu plan -destroy
@@ -1057,6 +1290,16 @@ tofu workspace list
 ### State Management
 
 #### Terraform State file
+
+Terraform onthoudt in het bestand `terraform.tfstate` **wat het allemaal aangemaakt heeft**. Zo kan het bij een volgende `tofu plan` vergelijken:
+
+- **gewenste toestand** = wat in je `.tf` bestanden staat
+- **huidige toestand** = wat in de state file staat (en in de cloud bestaat)
+
+Het verschil tussen die twee is precies wat `tofu plan` je toont. Dit bestand staat in je projectmap en wordt automatisch beheerd: **pas het nooit met de hand aan**.
+
+Zo ziet een (vereenvoudigde) state file eruit:
+
 ```json
 {
   "version": 4,
@@ -1075,7 +1318,10 @@ tofu workspace list
 }
 ```
 
-#### Remote State (Productie)
+#### 🔍 Deep Dive: Remote State (Productie)
+
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
+
 ```hcl
 # backend.tf
 terraform {
@@ -1095,7 +1341,9 @@ terraform {
 }
 ```
 
-### Geavanceerde Terraform Concepten
+### 🔍 Deep Dive: Geavanceerde Terraform Concepten
+
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
 
 #### 1. Modules
 ```hcl
@@ -1108,7 +1356,7 @@ variable "instance_count" {
 resource "google_compute_instance" "web" {
   count        = var.instance_count
   name         = "web-${count.index}"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
   # ... rest of configuration
 }
 
@@ -1123,7 +1371,7 @@ module "webserver" {
 ```hcl
 # Existing resource lookup
 data "google_compute_image" "ubuntu" {
-  family  = "ubuntu-2004-lts"
+  family  = "ubuntu-2204-lts"
   project = "ubuntu-os-cloud"
 }
 
@@ -1206,7 +1454,7 @@ locals {
 resource "google_compute_instance" "web_servers" {
   count        = 3
   name         = "web-server-${count.index}"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
   
   metadata = {
     sshKeys = "${var.ssh_user}:${file(var.ssh_public_key)}"
@@ -1225,9 +1473,9 @@ output "web_server_ips" {
 ```bash
 # Get IPs from Terraform output
 tofu output -json web_server_ips | jq -r '.[]' > ansible_hosts.txt
-
-# Or use Terraform provider for Ansible
 ```
+
+Het resultaat is gewoon een inventory bestand met één IP adres per regel. Omdat het niet op de standaard locatie (`/etc/ansible/hosts`) staat, geef je het mee met `-i ansible_hosts.txt`.
 
 #### Stap 3: Configuratie met Ansible
 ```yaml
@@ -1258,7 +1506,9 @@ tofu apply
 ansible-playbook -i ansible_hosts.txt playbook.yml
 ```
 
-### Terraform Ansible Provider
+### 🔍 Deep Dive: Terraform Ansible Provider
+
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
 
 ```hcl
 # Using Ansible provider in Terraform
@@ -1277,8 +1527,16 @@ resource "ansible_playbook" "configure_servers" {
 ### Oefening 1: Ansible Basics
 
 #### Setup
+
+1. Ga naar de map met de Ansible bestanden
+2. Pas het bestand `hosts` aan: vervang de IP adressen door die van **jouw eigen** server(s)
+3. Zet je SSH key op je server(s) met `ssh-copy-id` (zie [Stappenplan](#stappenplan-van-installatie-tot-eerste-ping))
+
 ```bash
-cd 5-iac-files/ansible
+cd 05-IaC/iac-files/ansible
+
+# Controleer of Ansible je hosts ziet (let op de -i: de inventory staat in deze map!)
+ansible all -i hosts --list-hosts
 
 # Test connectivity
 ansible all -i hosts -m ping
@@ -1377,7 +1635,7 @@ ssh-keygen -t rsa -b 4096 -f ~/.ssh/gcp_key
 
 #### Terraform configuratie
 ```bash
-cd 5-iac-files/opentofu/demoGCE
+cd 05-IaC/iac-files/opentofu/demoGCE
 
 # Variabelen file aanmaken
 cat > terraform.tfvars << EOF
@@ -1397,9 +1655,22 @@ tofu plan
 
 # Apply
 tofu apply
+
+# IP adres van je nieuwe VM opvragen
+tofu output ip
+
+# Inloggen op je VM (met de gebruiker uit terraform.tfvars)
+ssh -i ~/.ssh/gcp_key ubuntu@<IP-ADRES>
+
+# Klaar? Ruim alles op, anders blijft het geld kosten!
+tofu destroy
 ```
 
-### Oefening 4: Multi-tier Applicatie
+> **💡 Combineer met Ansible:** zet het IP adres van je nieuwe VM in een inventory bestand en voer een playbook uit op je VM. Zo heb je Terraform (aanmaken) en Ansible (configureren) samen gebruikt.
+
+### 🔍 Deep Dive - Oefening 4: Multi-tier Applicatie
+
+> **🔍 Deep Dive (optioneel):** Een uitbreidingsoefening voor wie verder wil. De code is een schets (`# ... configuration`) en werkt niet zonder aanvulling.
 
 #### Terraform: Infrastructuur
 ```hcl
@@ -1416,7 +1687,7 @@ variable "instance_count" {
 resource "google_compute_instance" "web_tier" {
   count        = var.instance_count.web
   name         = "web-${count.index}"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
   tags         = ["web-tier", "http-server"]
   
   # ... configuration
@@ -1426,7 +1697,7 @@ resource "google_compute_instance" "web_tier" {
 resource "google_compute_instance" "app_tier" {
   count        = var.instance_count.app
   name         = "app-${count.index}"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
   tags         = ["app-tier"]
   
   # ... configuration
@@ -1493,7 +1764,9 @@ resource "google_compute_target_pool" "web_pool" {
     - database_setup
 ```
 
-### Oefening 5: Declaratief vs Imperatief - Hands-on Vergelijking
+### 🔍 Deep Dive - Oefening 5: Declaratief vs Imperatief - Hands-on Vergelijking
+
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
 
 Deze oefening demonstreert het verschil tussen declaratieve en imperatieve benaderingen met een praktische server setup.
 
@@ -1514,12 +1787,12 @@ variable "server_count" {
 resource "google_compute_instance" "web_servers" {
   count        = var.server_count
   name         = "web-server-${count.index + 1}"
-  machine_type = "f1-micro"
+  machine_type = "e2-micro"
   zone         = "europe-west1-b"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
     }
   }
 
@@ -1543,7 +1816,7 @@ resource "google_compute_instance" "database" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
       size  = 50  # Bigger disk for database
     }
   }
@@ -1656,13 +1929,13 @@ tofu apply
     - name: Create web and database servers
       google.cloud.gcp_compute_instance:
         name: "{{ item.name }}"
-        machine_type: "{{ 'f1-micro' if item.type == 'web' else 'n1-standard-1' }}"
+        machine_type: "{{ 'e2-micro' if item.type == 'web' else 'n1-standard-1' }}"
         zone: "europe-west1-b"
         disks:
           - auto_delete: true
             boot: true
             initialize_params:
-              source_image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-2004-lts"
+              source_image: "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
               disk_size_gb: "{{ 10 if item.type == 'web' else 50 }}"
         network_interfaces:
           - network:
@@ -1861,7 +2134,9 @@ Na deze oefening begrijp je:
 
 ---
 
-## Deel 5: Best Practices en Productie
+## 🔍 Deep Dive - Deel 5: Best Practices en Productie
+
+> **🔍 Deep Dive (optioneel):** Dit deel gaat over hoe IaC in grote bedrijven en productie omgevingen gebruikt wordt. Niet nodig voor de les of de labo's.
 
 ### Terraform Best Practices
 
@@ -2051,6 +2326,8 @@ resource "google_monitoring_uptime_check_config" "web_check" {
 
 ## Troubleshooting en Debug
 
+> De Ansible debug tips (`-vvvv`, `ansible all -m ping`) zijn handig voor iedereen. De Terraform state commando's zijn eerder verdieping.
+
 ### Terraform Debugging
 
 #### 1. **Logging levels**
@@ -2143,7 +2420,7 @@ ansible hostname -m setup -a "filter=ansible_distribution*"
 ### Next Steps
 
 #### **Beginner level**
-1. **Practice**: Gebruik de oefeningen in `5-iac-files/`
+1. **Practice**: Gebruik de oefeningen in `05-IaC/iac-files/`
 2. **Experiment**: Probeer verschillende modules en providers
 3. **Document**: Maak eigen playbooks en terraform modules
 
@@ -2157,7 +2434,7 @@ ansible hostname -m setup -a "filter=ansible_distribution*"
 2. **Compliance**: Policy as Code met OPA/Sentinel
 3. **GitOps**: Full GitOps workflows met ArgoCD/Flux
 
-### Hantige Resources
+### Handige Resources
 
 #### **Documentatie**
 - [Ansible Documentation](https://docs.ansible.com/)
