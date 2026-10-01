@@ -1430,26 +1430,47 @@ Zo ziet een (vereenvoudigde) state file eruit:
 
 #### 🔍 Deep Dive: Remote State (Productie)
 
-> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
+> **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's. In de labo's werk je alleen en is de lokale `terraform.tfstate` prima.
+
+**Het probleem: de state staat op jouw laptop**
+
+Standaard staat `terraform.tfstate` gewoon in je projectmap. Werk je alleen, dan is dat geen probleem. In een team wel:
+
+- Iedereen heeft zijn **eigen kopie** van de state. Die lopen uit elkaar, en Terraform denkt dan dat resources ontbreken en probeert ze opnieuw aan te maken.
+- Laptop kwijt of map verwijderd? Dan weet Terraform niet meer wat het gemaakt heeft en kan je niet meer netjes `destroy` doen.
+- Doen twee mensen **tegelijk** `apply`, dan kan de state beschadigd raken.
+
+**De oplossing: de state centraal in de cloud bewaren**
+
+Met een `backend` blok zeg je tegen Terraform: "bewaar de state niet lokaal, maar in deze opslag in de cloud". Iedereen in het team gebruikt dan **hetzelfde** state bestand.
 
 ```hcl
-# backend.tf
+# backend.tf (in dezelfde projectmap als main.tf)
 terraform {
-  backend "gcs" {
-    bucket = "my-terraform-state-bucket"
-    prefix = "terraform/state"
+  backend "gcs" {                          # gcs = Google Cloud Storage
+    bucket = "my-terraform-state-bucket"   # de bucket waarin de state bewaard wordt
+    prefix = "terraform/state"             # de "map" binnen die bucket
   }
 }
+```
 
-# Alternative: S3 backend
+Bij de GCS backend wordt de state ook **vergrendeld** (locking) zolang iemand `apply` uitvoert. Een tweede persoon moet dan wachten.
+
+Werk je met AWS in plaats van Google Cloud, dan gebruik je de `s3` backend. Dit is een **alternatief**, niet iets dat je erbij zet. Een project heeft maar **één** backend:
+
+```hcl
 terraform {
-  backend "s3" {
+  backend "s3" {                  # s3 = opslag bij AWS
     bucket = "my-terraform-state"
-    key    = "terraform.tfstate"
+    key    = "terraform.tfstate"  # bestandsnaam binnen de bucket
     region = "us-west-2"
   }
 }
 ```
+
+**Goed om te weten:**
+- De bucket moet **al bestaan**. Terraform maakt hem niet zelf aan; je maakt hem één keer aan, bv. via de GCP console.
+- Na het toevoegen of wijzigen van een backend voer je opnieuw `tofu init` uit. Terraform stelt dan voor om je bestaande lokale state naar de bucket te verplaatsen.
 
 ### 🔍 Deep Dive: Geavanceerde Terraform Concepten
 
