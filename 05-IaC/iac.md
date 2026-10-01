@@ -233,38 +233,108 @@ ansible_ssh_private_key_file=~/.ssh/id_rsa
 
 #### 2. Ansible Configuration (ansible.cfg)
 
-Met `ansible.cfg` stel je standaardwaarden in, zodat je ze niet bij elk commando moet meegeven.
+> **🗂️ Kaart: `ansible.cfg` in 5 vragen**
+>
+> **1. Wat is het?**
+> Een tekstbestand met **standaardinstellingen** voor Ansible. Alles wat je anders bij elk commando zou typen (welke inventory, welke gebruiker, welke SSH key, ...) zet je er één keer in.
+>
+> | Zonder `ansible.cfg` | Met `ansible.cfg` |
+> |----------------------|-------------------|
+> | `ansible all -i hosts -u ubuntu --private-key ~/.ssh/id_ed25519 -m ping` | `ansible all -m ping` |
+>
+> **2. Is het verplicht?**
+> **Nee.** Ansible werkt perfect zonder: dan gebruikt het zijn ingebouwde standaardwaarden (bv. inventory = `/etc/ansible/hosts`). Je ziet dat aan `config file = None` in de output van `ansible --version`.
+>
+> **3. Moet ik het zelf aanmaken?**
+> **Ja.** Na de installatie bestaat er meestal **geen** `ansible.cfg`. Je maakt het zelf aan, als gewoon tekstbestand:
+> ```bash
+> cd ~/ansible-project       # je projectmap
+> nano ansible.cfg           # bestand aanmaken en instellingen toevoegen
+> ansible --version          # controle: config file = /home/.../ansible-project/ansible.cfg
+> ```
+> Wil je een voorbeeld met **alle** mogelijke instellingen (allemaal uitgeschakeld, met uitleg erbij)?
+> ```bash
+> ansible-config init --disabled > ansible.cfg
+> ```
+> Dat zijn er wel een paar honderd, dus voor beginners is een klein bestand met enkel wat je nodig hebt duidelijker.
+>
+> **4. Waar moet het staan?**
+> Ansible zoekt op 4 plaatsen, **in deze volgorde**, en gebruikt het **eerste** bestand dat het vindt. De andere worden volledig genegeerd (ze worden **niet** samengevoegd!):
+>
+> | Volgorde | Locatie | Wanneer gebruiken? |
+> |----------|---------|--------------------|
+> | 1 | Pad in de variabele `ANSIBLE_CONFIG` | Zelden, enkel als je dat expliciet wilt |
+> | 2 | `./ansible.cfg` in de **huidige map** | ✅ **Aanbevolen**: één per project, naast je `hosts` en playbooks |
+> | 3 | `~/.ansible.cfg` in je **home map** (let op het puntje!) | Persoonlijke instellingen voor al je projecten |
+> | 4 | `/etc/ansible/ansible.cfg` | Systeembreed, voor alle gebruikers (`sudo` nodig) |
+>
+> ⚠️ "Huidige map" betekent: de map waar je **staat** als je het commando typt. Sta je in een andere map, dan wordt je project-`ansible.cfg` niet gevonden.
+>
+> **5. Wat kan je er allemaal in zetten?**
+> Het bestand is opgedeeld in **secties** tussen `[ ]`. Dit zijn de nuttigste instellingen:
+>
+> | Sectie | Instelling | Wat doet het? | Vervangt optie |
+> |--------|------------|---------------|----------------|
+> | `[defaults]` | `inventory = hosts` | Welk inventory bestand gebruikt wordt | `-i hosts` |
+> | `[defaults]` | `remote_user = ubuntu` | Met welke gebruiker Ansible inlogt via SSH | `-u ubuntu` |
+> | `[defaults]` | `private_key_file = ~/.ssh/id_ed25519` | Welke SSH key gebruikt wordt | `--private-key` |
+> | `[defaults]` | `host_key_checking = False` | Niet vragen om de SSH fingerprint te bevestigen bij een nieuwe server (handig in een labo, minder veilig) | |
+> | `[defaults]` | `forks = 10` | Op hoeveel servers tegelijk Ansible werkt (standaard 5) | `-f 10` |
+> | `[defaults]` | `timeout = 30` | Hoeveel seconden wachten op een SSH verbinding | `-T 30` |
+> | `[defaults]` | `interpreter_python = auto_silent` | Zelf Python zoeken op de server, zonder waarschuwing daarover | |
+> | `[defaults]` | `log_path = ./ansible.log` | Alle output ook naar een logbestand schrijven | |
+> | `[defaults]` | `roles_path = ./roles` | Waar Ansible je roles zoekt | |
+> | `[privilege_escalation]` | `become = True` | Taken standaard met `sudo` uitvoeren | `--become` / `-b` |
+> | `[privilege_escalation]` | `become_ask_pass = True` | Vragen naar je sudo wachtwoord | `-K` |
+>
+> **Wat hoort er NIET in?** Je lijst met servers (die staat in de **inventory**), je taken (die staan in een **playbook**) en wachtwoorden.
 
-##### 📍 Waar staat ansible.cfg?
-
-Ansible zoekt het configuratiebestand op deze plaatsen, **in deze volgorde**. Het **eerste** bestand dat gevonden wordt, wordt gebruikt (de rest wordt genegeerd):
-
-| Volgorde | Locatie | Gebruik |
-|----------|---------|---------|
-| 1 | Variabele `ANSIBLE_CONFIG` | Als je die zelf instelt |
-| 2 | `./ansible.cfg` (huidige map) | **Aanbevolen**: per project |
-| 3 | `~/.ansible.cfg` (je home map) | Voor jouw gebruiker |
-| 4 | `/etc/ansible/ansible.cfg` | Systeembreed |
-
-Controleer welk bestand gebruikt wordt met `ansible --version` (regel `config file = ...`).
-
-> **⚠️ WSL tip:** Werk je in WSL in een map op je Windows schijf (`/mnt/c/...`)? Dan negeert Ansible een `ansible.cfg` in die map om veiligheidsredenen (de map is "world-writable"). Werk daarom in je Linux home map, bv. `~/ansible`.
-
-##### Voorbeeld ansible.cfg
+##### Voorbeeld: een typisch ansible.cfg voor een project
 
 ```ini
 [defaults]
-# gebruik ./hosts als inventory (geen -i meer nodig)
+# gebruik de hosts file uit deze map (geen -i meer nodig)
 inventory = hosts
-# niet vragen om SSH fingerprints te bevestigen
-host_key_checking = False
 # standaard SSH gebruiker
 remote_user = ubuntu
 # welke SSH key gebruikt wordt
-private_key_file = ~/.ssh/id_rsa
+private_key_file = ~/.ssh/id_ed25519
+# niet vragen om SSH fingerprints te bevestigen (enkel voor labo's)
+host_key_checking = False
+
+[privilege_escalation]
+# taken standaard met sudo uitvoeren
+become = True
 ```
 
-> **⚠️** Zet commentaar in `ansible.cfg` altijd op een **aparte regel**. Commentaar achter een waarde (`inventory = hosts  # uitleg`) wordt gelezen als deel van de waarde, en dan vindt Ansible je inventory niet meer.
+Met dit bestand in je projectmap ziet die map er zo uit:
+
+```
+ansible-project/          ← hier voer je je commando's uit
+├── ansible.cfg           ← instellingen (dit bestand)
+├── hosts                 ← inventory: welke servers
+└── playbook.yml          ← playbook: wat moet er gebeuren
+```
+
+En werkt alles zonder extra opties:
+
+```bash
+ansible all --list-hosts
+ansible all -m ping
+ansible-playbook playbook.yml
+```
+
+**Goed om te weten:**
+- Relatieve paden (zoals `inventory = hosts`) worden gelezen **vanaf de map waar `ansible.cfg` staat**.
+- Opties op de command line en instellingen in je playbook winnen van `ansible.cfg`. Met `ansible all -u root -m ping` log je dus in als `root`, ook al staat `remote_user = ubuntu` in je `ansible.cfg`.
+- Controleer welke instellingen je effectief veranderd hebt met:
+  ```bash
+  ansible-config dump --only-changed
+  ```
+
+> **⚠️ Commentaar altijd op een aparte regel!** Commentaar achter een waarde (`inventory = hosts  # uitleg`) wordt gelezen als deel van de waarde, en dan vindt Ansible je inventory niet meer.
+
+> **⚠️ WSL tip:** Werk je in WSL in een map op je Windows schijf (`/mnt/c/...`)? Dan negeert Ansible een `ansible.cfg` in die map om veiligheidsredenen (de map is "world-writable"). Werk daarom in je Linux home map, bv. `~/ansible-project`.
 
 De versie in `05-IaC/iac-files/ansible/ansible.cfg` bevat enkel `host_key_checking = False`. Daar moet je de inventory dus nog met `-i hosts` meegeven.
 
