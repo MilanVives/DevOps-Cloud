@@ -1663,23 +1663,102 @@ resource "google_compute_instance" "web" {
   - **Ansible**, zoals in [Deel 3: Ansible + Terraform Integratie](#deel-3-ansible--terraform-integratie): Terraform maakt de VM, Ansible configureert hem
 
 #### 4. Conditionals en Functions
+
+**Conditionals: als ... dan ... anders ...**
+
+Terraform heeft geen `if` blokken zoals een programmeertaal. Je gebruikt een korte vorm:
+
 ```hcl
-# Conditional resources
-resource "google_compute_instance" "web" {
-  count = var.environment == "production" ? 3 : 1
-  name  = "web-${count.index}"
-  # ...
+voorwaarde ? waarde_als_waar : waarde_als_onwaar
+```
+
+Lees het als: "**is** de voorwaarde waar? **dan** dit, **anders** dat". Bijvoorbeeld:
+
+```hcl
+variable "environment" {
+  description = "test of production"
+  default     = "test"
 }
 
-# Functions
-locals {
-  instance_names = [for i in range(var.instance_count) : "web-${i}"]
-  common_tags = {
-    Environment = var.environment
-    Project     = var.project_name
-  }
+resource "google_compute_instance" "web" {
+  # In productie 3 servers, anders 1
+  count        = var.environment == "production" ? 3 : 1
+  # In productie een grotere machine, anders de kleinste
+  machine_type = var.environment == "production" ? "e2-medium" : "e2-micro"
+  name         = "web-${count.index}"
+  # ... rest van de configuratie
 }
 ```
+
+Met `tofu apply` krijg je 1 kleine server. Met `tofu apply -var="environment=production"` krijg je er 3 grotere, met **dezelfde code**.
+
+Een veelgebruikte truc is een resource **aan- of uitzetten** met `count = 1` of `count = 0`:
+
+```hcl
+variable "create_static_ip" {
+  description = "Een vast IP adres aanmaken?"
+  type        = bool
+  default     = false
+}
+
+resource "google_compute_address" "static" {
+  # 1 = aanmaken, 0 = niet aanmaken
+  count = var.create_static_ip ? 1 : 0
+  name  = "web-ip"
+}
+```
+
+**Functions: ingebouwde hulpjes**
+
+Terraform heeft heel wat **ingebouwde functies** om met tekst, getallen en lijsten te werken. Je kan geen eigen functies schrijven, enkel deze gebruiken. Eén ken je al: `file("~/.ssh/id_rsa.pub")` uit het GCP voorbeeld leest een bestand in.
+
+| Functie | Resultaat | Wat doet het? |
+|---------|-----------|---------------|
+| `upper("hallo")` | `"HALLO"` | Naar hoofdletters |
+| `lower("Web-Server")` | `"web-server"` | Naar kleine letters |
+| `replace("mijn server", " ", "-")` | `"mijn-server"` | Tekst vervangen |
+| `length(["web1", "web2", "web3"])` | `3` | Aantal elementen in een lijst |
+| `join(", ", ["web1", "web2"])` | `"web1, web2"` | Lijst samenvoegen tot tekst |
+| `max(2, 7, 4)` | `7` | Grootste getal |
+| `file("~/.ssh/id_rsa.pub")` | inhoud van het bestand | Bestand inlezen |
+
+> **💡 Zelf uitproberen met `tofu console`:** in je projectmap start `tofu console` een interactieve prompt waarin je functies kan testen zonder iets aan te maken. Typ bv. `upper("hallo")` en druk Enter. Stoppen doe je met `exit`.
+
+Alle functies vind je in de [OpenTofu documentatie](https://opentofu.org/docs/language/functions/).
+
+**Locals: een waarde een naam geven**
+
+Gebruik je dezelfde (berekende) waarde op meerdere plaatsen? Geef ze dan één keer een naam in een `locals` blok, en verwijs ernaar met `local.<naam>`. Hier wordt een functie gebruikt om van een projectnaam een geldige servernaam te maken:
+
+```hcl
+variable "project_name" {
+  default = "Mijn Webshop"
+}
+
+locals {
+  # "Mijn Webshop" wordt "mijn-webshop" (GCP namen: kleine letters, geen spaties)
+  name_prefix = lower(replace(var.project_name, " ", "-"))
+
+  # Labels die we op elke resource willen zetten
+  common_labels = {
+    environment = var.environment
+    project     = local.name_prefix
+  }
+}
+
+resource "google_compute_instance" "web" {
+  name   = "${local.name_prefix}-web"   # wordt: mijn-webshop-web
+  labels = local.common_labels
+  # ... rest van de configuratie
+}
+```
+
+| | `variable` | `local` |
+|-|------------|---------|
+| Wie bepaalt de waarde? | De **gebruiker** (via `terraform.tfvars` of `-var`) | De **code** zelf (berekend) |
+| Verwijzen | `var.<naam>` | `local.<naam>` (zonder s!) |
+
+> **💡** GCP labels moeten in **kleine letters**. `Environment = "test"` geeft een fout, `environment = "test"` werkt.
 
 ---
 
@@ -2427,10 +2506,10 @@ locals {
   name_prefix = "${var.environment}-${var.project}"
   
   common_tags = {
-    Environment = var.environment
-    Project     = var.project
-    ManagedBy   = "terraform"
-    Team        = var.team
+    environment = var.environment
+    project     = var.project
+    managed_by  = "terraform"
+    team        = var.team
   }
 }
 
