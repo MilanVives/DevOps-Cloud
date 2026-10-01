@@ -1477,44 +1477,134 @@ terraform {
 > **🔍 Deep Dive (optioneel):** Deze sectie gaat verder dan de basis. Je hebt dit niet nodig voor de les of de labo's.
 
 #### 1. Modules
+
+**Wat is een module?**
+
+Een module is een **herbruikbaar bouwblok**: een stuk Terraform code dat je één keer schrijft en daarna meerdere keren kan gebruiken, telkens met andere waarden. Vergelijk het met een **functie** in een programmeertaal.
+
+Een module is gewoon een **map met `.tf` bestanden**. Ook je eigen projectmap is eigenlijk een module (de "root module").
+
+```
+mijn-project/                 ← root module: hier voer je tofu uit
+├── main.tf                   ← gebruikt de module
+└── modules/
+    └── webserver/            ← de module: een gewone map met .tf bestanden
+        └── main.tf
+```
+
+Een module heeft:
+- **inputs**: `variable` blokken, de waarden die je meegeeft
+- **resources**: wat de module aanmaakt
+- **outputs**: `output` blokken, wat de module teruggeeft
+
+**De module schrijven:**
+
 ```hcl
 # modules/webserver/main.tf
+
+# Inputs: deze waarden geef je mee als je de module gebruikt
+variable "name_prefix" {
+  description = "Begin van de naam van de servers"
+}
+
 variable "instance_count" {
-  description = "Number of instances"
+  description = "Aantal servers"
   default     = 1
 }
 
+# Wat de module aanmaakt
 resource "google_compute_instance" "web" {
   count        = var.instance_count
-  name         = "web-${count.index}"
+  name         = "${var.name_prefix}-web-${count.index}"
   machine_type = "e2-micro"
-  # ... rest of configuration
+  # ... rest van de configuratie (zone, disk, netwerk)
 }
 
-# main.tf (using the module)
-module "webserver" {
-  source         = "./modules/webserver"
-  instance_count = 3
+# Output: wat de module teruggeeft
+output "ips" {
+  value = google_compute_instance.web[*].network_interface[0].access_config[0].nat_ip
 }
 ```
 
-#### 2. Data Sources
+**De module gebruiken:**
+
 ```hcl
-# Existing resource lookup
+# main.tf (in je projectmap)
+
+# Dezelfde module twee keer gebruiken, met andere waarden
+module "test" {
+  source         = "./modules/webserver"   # waar staat de module?
+  name_prefix    = "test"
+  instance_count = 1
+}
+
+module "productie" {
+  source         = "./modules/webserver"
+  name_prefix    = "prod"
+  instance_count = 3
+}
+
+# De output van een module gebruiken: module.<naam>.<output>
+output "productie_ips" {
+  value = module.productie.ips
+}
+```
+
+Resultaat: met één module krijg je 1 testserver (`test-web-0`) en 3 productieservers (`prod-web-0` tot `prod-web-2`), zonder dezelfde code twee keer te schrijven.
+
+**Goed om te weten:**
+- Na het toevoegen van een module voer je opnieuw `tofu init` uit. Anders krijg je de fout "Module not installed".
+- Daarom de input `name_prefix`: gebruik je een module meerdere keren, dan moeten de namen in de cloud verschillend zijn.
+- Je kan ook kant-en-klare modules van anderen gebruiken uit de [Terraform Registry](https://registry.terraform.io/browse/modules). Dan verwijst `source` naar de registry in plaats van naar een map.
+
+#### 2. Data Sources
+
+**Wat is een data source?**
+
+Met een `resource` blok **maakt** Terraform iets aan en beheert het. Met een `data` blok **zoekt** Terraform iets op dat **al bestaat**, om die informatie te gebruiken. Een data source maakt niets aan, wijzigt niets en wordt bij `tofu destroy` ook niet verwijderd.
+
+| | `resource` | `data` |
+|-|------------|--------|
+| Wat doet het? | Aanmaken, wijzigen, verwijderen | Enkel **lezen** |
+| Voorbeeld | Een nieuwe VM | De nieuwste Ubuntu image, een bestaand netwerk |
+| Verwijzen | `google_compute_instance.vm.name` | `data.google_compute_image.ubuntu.self_link` |
+
+**Voorbeeld:** in plaats van zelf de exacte naam van een Ubuntu image op te zoeken (die namen veranderen bij elke update), vraag je Terraform om de **nieuwste** image uit de Ubuntu 22.04 familie op te zoeken. En je gebruikt het netwerk `default` dat al bestaat in je GCP project.
+
+```hcl
+# Data source: zoek de nieuwste Ubuntu 22.04 image op (enkel lezen)
 data "google_compute_image" "ubuntu" {
   family  = "ubuntu-2204-lts"
   project = "ubuntu-os-cloud"
 }
 
+# Data source: het bestaande "default" netwerk opzoeken
+data "google_compute_network" "default" {
+  name = "default"
+}
+
 resource "google_compute_instance" "vm" {
-  # Use data source
+  name         = "mijn-vm"
+  machine_type = "e2-micro"
+
   boot_disk {
     initialize_params {
+      # gebruik wat de data source gevonden heeft
       image = data.google_compute_image.ubuntu.self_link
     }
   }
+
+  network_interface {
+    network = data.google_compute_network.default.self_link
+    access_config {}
+  }
 }
 ```
+
+**Goed om te weten:**
+- Je verwijst naar een data source met het woord `data` ervoor: `data.<type>.<naam>.<attribuut>`.
+- Bestaat wat je opzoekt niet (bv. een tikfout in de netwerknaam), dan stopt `tofu plan` met een foutmelding.
+- Welke data sources er zijn en welke attributen ze teruggeven, vind je in de documentatie van de provider in de [Terraform Registry](https://registry.terraform.io/providers/hashicorp/google/latest/docs).
 
 #### 3. Provisioners
 
