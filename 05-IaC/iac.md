@@ -228,6 +228,46 @@ ansible_ssh_private_key_file=~/.ssh/id_rsa
 - `:vars`: Variabelen voor de groep
 - `all`: Speciale groep die **automatisch** alle hosts bevat
 
+##### 🎯 Alleen bepaalde hosts aanspreken (via de groepen)
+
+De namen tussen `[ ]` zijn **labels**: je gebruikt ze in je commando om te kiezen op **welke** servers iets moet gebeuren. Je hoeft dus niet altijd alles aan te spreken.
+
+Met het `hosts` bestand hierboven:
+
+| Commando | Welke hosts? |
+|----------|--------------|
+| `ansible all -i hosts -m ping` | Alle 4 de hosts |
+| `ansible mycloudvms -i hosts -m ping` | Enkel de 3 hosts uit `[mycloudvms]` |
+| `ansible ubuntu-servers -i hosts -m ping` | Enkel `141.148.235.108` |
+| `ansible linux.vives.live -i hosts -m ping` | Eén enkele host (die wel in de inventory moet staan) |
+| `ansible 'mycloudvms:ubuntu-servers' -i hosts -m ping` | Beide groepen samen (`:` = "en ook") |
+| `ansible 'all:!mycloudvms' -i hosts -m ping` | Alles **behalve** `mycloudvms` (`!` = "niet") |
+
+> **💡 Eerst controleren, dan uitvoeren:** vervang `-m ping` door `--list-hosts` om te zien welke hosts een commando zou raken, zonder iets uit te voeren:
+> ```bash
+> ansible mycloudvms -i hosts --list-hosts
+>   hosts (3):
+>     141.144.203.33
+>     projectwerk.vives.be
+>     linux.vives.live
+> ```
+
+Hetzelfde werkt in een **playbook**: `hosts: mycloudvms` voert het playbook enkel uit op die groep. Wil je een playbook dat op `all` staat toch maar op één groep uitvoeren, gebruik dan `--limit`:
+
+```bash
+ansible-playbook -i hosts playbook.yaml --limit ubuntu-servers
+```
+
+> **⚠️ Typfout in de groepsnaam?** Dan geeft Ansible geen fout, maar enkel een waarschuwing en gebeurt er niets:
+> ```text
+> [WARNING]: Could not match supplied host pattern, ignoring: mycloudvm
+> [WARNING]: No hosts matched, nothing to do
+> ```
+
+> **💡 Waarschuwing over "Invalid characters"?** Bij het voorbeeldbestand zie je:
+> `[WARNING]: Invalid characters were found in group names but not replaced`.
+> Dat komt door het streepje in `ubuntu-servers`. Het werkt wel, maar Ansible raadt aan om in groepsnamen enkel letters, cijfers en **underscores** te gebruiken: `ubuntu_servers`.
+
 > **⚠️ Wachtwoorden in de inventory zijn géén best practice!** Het voorbeeld met `ansible_password` dient enkel als demo. Beter: werk met **SSH keys** en **niet** met de root gebruiker (zie het stappenplan hieronder).
 > Wil je toch met wachtwoorden werken, dan moet het programma `sshpass` op je control node staan (`sudo apt install sshpass`), anders faalt de verbinding.
 
