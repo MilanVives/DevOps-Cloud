@@ -114,6 +114,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 - Correct opruimen zonder verborgen kosten
 
 ### [Les 6b – Kubernetes Fundamentals](06-Kubernetes/6b-kubernetes-fundamentals.md)
+- [Slides](06-Kubernetes/6b-kubernetes-fundamentals-slides.md) - Marp-slidedeck versie voor in de les
 - Wat gebeurt er bij `kubectl apply`? Controle-lus en desired state
 - Anatomie van een manifest, imperatief vs declaratief
 - **Pods**: levenscyclus, sidecars, requests/limits, readiness/liveness probes
@@ -125,6 +126,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 - Een 3-tier applicatie uitgedrukt in Kubernetes-objecten
 
 ### [Les 6c – Kubernetes met Minikube: 3-tier Pet Shelter](06-Kubernetes/6c-kubernetes-minikube.md)
+- [Slides](06-Kubernetes/6c-kubernetes-minikube-slides.md) - Marp-slidedeck versie voor in de les
 - **Minikube**: installatie en starten (macOS, Linux, Windows)
 - **Pet Shelter**: frontend (Express) + backend (Node.js API) + MongoDB, van Docker Compose naar Kubernetes
 - **Manifests**: Secret, ConfigMap, Deployments en Services één voor één uitgelegd

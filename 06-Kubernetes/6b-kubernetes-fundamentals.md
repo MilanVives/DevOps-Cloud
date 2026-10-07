@@ -254,12 +254,15 @@ Verander je het image (`nginx:1.27` → `nginx:1.28`), dan maakt de Deployment e
 ```mermaid
 graph TB
     subgraph T1["Start"]
+        direction LR
         a1[v1] --- a2[v1] --- a3[v1]
     end
-    subgraph T2["Tussenin"]
+    subgraph T2["Tussenin: nieuwe pod start, oude stopt"]
+        direction LR
         b1[v1] --- b2[v1] --- b3[v2]
     end
     subgraph T3["Einde"]
+        direction LR
         c1[v2] --- c2[v2] --- c3[v2]
     end
     T1 --> T2 --> T3
