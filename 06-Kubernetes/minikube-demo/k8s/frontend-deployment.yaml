@@ -15,6 +15,7 @@ spec:
       containers:
       - name: frontend
         image: dimilan/pet-shelter-frontend:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 3000
         env:

@@ -66,7 +66,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ## [Les 3 – Docker Compose](03-Compose/)
 
-- [Van Docker run naar Compose](03-Compose/compose.md) - Multi-container orchestratie
+- [Van Docker run naar Compose](03-Compose/3-compose.md) - Multi-container orchestratie
 - [Compose bestanden](03-Compose/compose-files/) - Praktische voorbeelden
 - **Onderwerpen:**
   - Multi-container applicaties
@@ -101,36 +101,38 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ## [Les 6 – Kubernetes](06-Kubernetes/)
 
-### [Les 6a – Kubernetes Cloud Deployment (Easy Start)](06-Kubernetes/kubernetes-cloud-start.md)
-- Waarom Kubernetes? Container orchestratie uitdagingen
-- Managed Kubernetes: Linode Kubernetes Engine (LKE) quick start
-- Cloud deployment: van Docker Compose naar Kubernetes
-- Basic deployment op managed cluster
-- LoadBalancer services en external access
+### [Les 6a – Kubernetes Cloud Deployment](06-Kubernetes/kubernetes-cloud-start.md)
+- [Slides](06-Kubernetes/kubernetes-cloud-slides.md) - Marp-slidedeck versie voor in de les
+- [Demobestanden](06-Kubernetes/cloud-demo/) - Virtuweb: index.html, Dockerfile, Deployment en Service manifests
+- Waarom container orkestratie? Docker Compose vs Kubernetes
+- Kubernetes architectuur: control plane, worker nodes, kubelet, kube-proxy, pods
+- Website dockerizen en multi-platform pushen (amd64 + arm64)
+- Managed Kubernetes cluster aanmaken bij Linode (LKE), kosten
+- kubectl en KUBECONFIG
+- Deployment (replicas, desired state) en Service van type LoadBalancer (NodeBalancer)
+- Schalen, self-healing, rolling updates en rollback
+- Correct opruimen zonder verborgen kosten
 
-### [Les 6b – Kubernetes Fundamentals & Local Development](06-Kubernetes/kubernetes-fundamentals.md)
-- **Kubernetes Architectuur**: control plane, nodes, pods  
-- **Core Concepts Deep Dive**: Pods, Services, Deployments
-- **Kubernetes Manifests**: YAML configuratie en best practices
-- **Service Discovery**: load balancing mechanismen
-- **ConfigMaps en Secrets**: configuration management
-- **Namespaces**: resource isolation en multi-tenancy
-- **Labels & Selectors**: resource organization en targeting
-- **Three-tier Application**: frontend, backend, database deployment
-- **Local Development**: Minikube en Kind (Kubernetes in Docker)
-- **Development Workflows**: hot reloading en debugging
-- **Troubleshooting**: praktische debugging technieken
+### [Les 6b – Kubernetes Fundamentals](06-Kubernetes/kubernetes-fundamentals.md)
+- Wat gebeurt er bij `kubectl apply`? Controle-lus en desired state
+- Anatomie van een manifest, imperatief vs declaratief
+- **Pods**: levenscyclus, sidecars, requests/limits, readiness/liveness probes
+- **Deployments & ReplicaSets**: rolling updates en rollback
+- **Services & DNS**: ClusterIP, NodePort, LoadBalancer, headless
+- **ConfigMaps & Secrets**: env, envFrom, volumes (base64 ≠ encryptie)
+- **Labels & selectors**, **Namespaces** en resource quotas
+- **Opslag**: volumes, PersistentVolumeClaims, StorageClasses
+- Een 3-tier applicatie uitgedrukt in Kubernetes-objecten
 
-### [Les 6c – Kubernetes met Minikube: Praktische Tutorial](06-Kubernetes/kubernetes-minikube.md)
-- **Minikube Setup**: installatie en configuratie op macOS, Linux, Windows
-- **3-Tier Pet Shelter Applicatie**: Frontend (Express/HTML) + Backend (Node.js REST API) + MongoDB database deployment
-- **Secrets & ConfigMaps**: gevoelige data en configuratie management
-- **Deployments & Services**: complete applicatie orchestratie met frontend, backend en database tiers
-- **Service Toegang**: NodePort, port forwarding, minikube tunnel, ingress
-- **Monitoring & Debugging**: logs, events, resource usage, pod execution
-- **Troubleshooting**: veelvoorkomende problemen en oplossingen
-- **Praktische Workflow**: van lokale development tot volledige deployment
-- **Repository**: volledige working example met [PetShelter-minimal](https://github.com/MilanVives/PetShelter-minimal) in [minikube-demo](06-Kubernetes/minikube-demo/)
+### [Les 6c – Kubernetes met Minikube: 3-tier Pet Shelter](06-Kubernetes/kubernetes-minikube.md)
+- **Minikube**: installatie en starten (macOS, Linux, Windows)
+- **Pet Shelter**: frontend (Express) + backend (Node.js API) + MongoDB, van Docker Compose naar Kubernetes
+- **Manifests**: Secret, ConfigMap, Deployments en Services één voor één uitgelegd
+- **Images bouwen in Minikube** (`docker-env` / `minikube image build`, `imagePullPolicy: Never`)
+- **Toegang**: `minikube service`, port-forward, NodePort
+- **Debugging & troubleshooting**: status → oorzaak → oplossing
+- **Schalen, rolling updates en data bewaren** met een PersistentVolumeClaim
+- **Repository**: [PetShelter-minimal](https://github.com/MilanVives/PetShelter-minimal), kopie in [minikube-demo](06-Kubernetes/minikube-demo/)
 
 ## [Les 7 – Helm Package Management](07-Helm/)
 

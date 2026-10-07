@@ -1,0 +1,2 @@
+# Bevat een admin-token voor je cluster: nooit committen!
+*kubeconfig*.yaml

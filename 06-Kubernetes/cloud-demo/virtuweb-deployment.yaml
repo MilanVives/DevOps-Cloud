@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtuweb-deployment
+  labels:
+    app: virtuweb
+spec:
+  replicas: 3                     # desired state: altijd 3 pods
+  selector:
+    matchLabels:
+      app: virtuweb               # deze Deployment beheert pods met dit label
+  template:                       # sjabloon voor elke pod
+    metadata:
+      labels:
+        app: virtuweb
+    spec:
+      containers:
+        - name: virtuweb
+          image: DOCKERHUB-USER/virtuweb:v1   # vervang door jouw Docker Hub naam
+          ports:
+            - containerPort: 80
