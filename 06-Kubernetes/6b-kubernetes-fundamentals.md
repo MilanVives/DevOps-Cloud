@@ -1,6 +1,6 @@
 # Les 6b – Kubernetes Fundamentals
 
-> In [Les 6a](kubernetes-cloud-start.md) deployden we een website op een cloud cluster: *hoe* doe je het. Hier kijken we naar het *waarom*: welke bouwstenen zijn er, en hoe werken ze samen? In [Les 6c](kubernetes-minikube.md) pas je alles toe op een 3-tier applicatie.
+> In [Les 6a](6a-kubernetes-cloud.md) deployden we een website op een cloud cluster: *hoe* doe je het. Hier kijken we naar het *waarom*: welke bouwstenen zijn er, en hoe werken ze samen? In [Les 6c](6c-kubernetes-minikube.md) pas je alles toe op een 3-tier applicatie.
 
 ## 📋 Inhoud
 
@@ -20,7 +20,7 @@
 
 ## 1. Wat gebeurt er bij `kubectl apply`?
 
-De onderdelen van een cluster (API server, etcd, scheduler, controller manager, kubelet, kube-proxy) zag je al in [Les 6a](kubernetes-cloud-start.md#2-kubernetes-in-een-notendop). Interessanter is hoe ze samenwerken. Dit gebeurt er als je een Deployment met 3 replicas toepast:
+De onderdelen van een cluster (API server, etcd, scheduler, controller manager, kubelet, kube-proxy) zag je al in [Les 6a](6a-kubernetes-cloud.md#2-kubernetes-in-een-notendop). Interessanter is hoe ze samenwerken. Dit gebeurt er als je een Deployment met 3 replicas toepast:
 
 ```mermaid
 sequenceDiagram
@@ -337,7 +337,7 @@ graph TB
 |---|---|---|
 | `ClusterIP` (standaard) | Enkel binnen de cluster | Databases, interne API's |
 | `NodePort` | `<node-IP>:<30000-32767>` | Testen, Minikube |
-| `LoadBalancer` | Publiek IP (cloud) | Een app op internet zetten ([Les 6a](kubernetes-cloud-start.md)) |
+| `LoadBalancer` | Publiek IP (cloud) | Een app op internet zetten ([Les 6a](6a-kubernetes-cloud.md)) |
 | Headless (`clusterIP: None`) | DNS geeft de IP's van de pods zelf terug | StatefulSets, databases met replicatie |
 
 ### DNS: Services vinden via hun naam
@@ -557,7 +557,7 @@ spec:
       storage: 1Gi
 ```
 
-Uitgewerkt voorbeeld met MongoDB: [Les 6c, sectie 10.3](kubernetes-minikube.md#103-data-bewaren-met-een-persistentvolumeclaim).
+Uitgewerkt voorbeeld met MongoDB: [Les 6c, sectie 10.3](6c-kubernetes-minikube.md#103-data-bewaren-met-een-persistentvolumeclaim).
 
 > [!NOTE]
 > Voor databases met **meerdere replicas** gebruik je een **StatefulSet** in plaats van een Deployment: elke pod krijgt dan een vaste naam (`mongodb-0`, `mongodb-1`) en een eigen PVC.
@@ -566,7 +566,7 @@ Uitgewerkt voorbeeld met MongoDB: [Les 6c, sectie 10.3](kubernetes-minikube.md#1
 
 ## 10. Alles samen: een 3-tier applicatie
 
-Zo ziet de Pet Shelter-applicatie uit [Les 6c](kubernetes-minikube.md) eruit in Kubernetes-objecten:
+Zo ziet de Pet Shelter-applicatie uit [Les 6c](6c-kubernetes-minikube.md) eruit in Kubernetes-objecten:
 
 ```mermaid
 graph TB
@@ -630,4 +630,4 @@ Het patroon is altijd hetzelfde: **Deployment** (wat draait er?) + **Service** (
 
 ### Volgende stap
 
-In **[Les 6c – Kubernetes met Minikube](kubernetes-minikube.md)** deploy je de 3-tier Pet Shelter-applicatie zelf, met Secrets, ConfigMaps, Services en debugging.
+In **[Les 6c – Kubernetes met Minikube](6c-kubernetes-minikube.md)** deploy je de 3-tier Pet Shelter-applicatie zelf, met Secrets, ConfigMaps, Services en debugging.

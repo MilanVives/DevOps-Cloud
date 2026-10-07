@@ -21,7 +21,7 @@
 
 ## Introductie
 
-In deze tutorial migreren we de **PetShelter 3-tier applicatie** van raw Kubernetes YAML manifests naar een Helm Chart. We nemen de bestaande Kubernetes deployment uit `06-Kubernetes/minikube-demo/k8s/` en transformeren deze naar een herbruikbare, configureerbare Helm Chart.
+In deze tutorial migreren we de **PetShelter 3-tier applicatie** van raw Kubernetes YAML manifests naar een Helm Chart. We nemen de bestaande Kubernetes deployment uit `06-Kubernetes/6c-minikube-demo/k8s/` en transformeren deze naar een herbruikbare, configureerbare Helm Chart.
 
 ### Wat Je Leert
 
@@ -1554,7 +1554,7 @@ helm install petshelter ./petshelter-chart
 - 📚 [Helm Documentation](https://helm.sh/docs/)
 - 📚 [Helm Best Practices](https://helm.sh/docs/chart_best_practices/)
 - 💻 [PetShelter Repository](https://github.com/MilanVives/PetShelter-minimal)
-- 🎓 [Helm Tutorial](../helm.md)
+- 🎓 [Helm Tutorial](helm.md)
 
 ---
 

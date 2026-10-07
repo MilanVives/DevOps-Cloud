@@ -101,9 +101,9 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ## [Les 6 – Kubernetes](06-Kubernetes/)
 
-### [Les 6a – Kubernetes Cloud Deployment](06-Kubernetes/kubernetes-cloud-start.md)
-- [Slides](06-Kubernetes/kubernetes-cloud-slides.md) - Marp-slidedeck versie voor in de les
-- [Demobestanden](06-Kubernetes/cloud-demo/) - Virtuweb: index.html, Dockerfile, Deployment en Service manifests
+### [Les 6a – Kubernetes Cloud Deployment](06-Kubernetes/6a-kubernetes-cloud.md)
+- [Slides](06-Kubernetes/6a-kubernetes-cloud-slides.md) - Marp-slidedeck versie voor in de les
+- [Demobestanden](06-Kubernetes/6a-cloud-demo/) - Virtuweb: index.html, Dockerfile, Deployment en Service manifests
 - Waarom container orkestratie? Docker Compose vs Kubernetes
 - Kubernetes architectuur: control plane, worker nodes, kubelet, kube-proxy, pods
 - Website dockerizen en multi-platform pushen (amd64 + arm64)
@@ -113,7 +113,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 - Schalen, self-healing, rolling updates en rollback
 - Correct opruimen zonder verborgen kosten
 
-### [Les 6b – Kubernetes Fundamentals](06-Kubernetes/kubernetes-fundamentals.md)
+### [Les 6b – Kubernetes Fundamentals](06-Kubernetes/6b-kubernetes-fundamentals.md)
 - Wat gebeurt er bij `kubectl apply`? Controle-lus en desired state
 - Anatomie van een manifest, imperatief vs declaratief
 - **Pods**: levenscyclus, sidecars, requests/limits, readiness/liveness probes
@@ -124,7 +124,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 - **Opslag**: volumes, PersistentVolumeClaims, StorageClasses
 - Een 3-tier applicatie uitgedrukt in Kubernetes-objecten
 
-### [Les 6c – Kubernetes met Minikube: 3-tier Pet Shelter](06-Kubernetes/kubernetes-minikube.md)
+### [Les 6c – Kubernetes met Minikube: 3-tier Pet Shelter](06-Kubernetes/6c-kubernetes-minikube.md)
 - **Minikube**: installatie en starten (macOS, Linux, Windows)
 - **Pet Shelter**: frontend (Express) + backend (Node.js API) + MongoDB, van Docker Compose naar Kubernetes
 - **Manifests**: Secret, ConfigMap, Deployments en Services één voor één uitgelegd
@@ -132,7 +132,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 - **Toegang**: `minikube service`, port-forward, NodePort
 - **Debugging & troubleshooting**: status → oorzaak → oplossing
 - **Schalen, rolling updates en data bewaren** met een PersistentVolumeClaim
-- **Repository**: [PetShelter-minimal](https://github.com/MilanVives/PetShelter-minimal), kopie in [minikube-demo](06-Kubernetes/minikube-demo/)
+- **Repository**: [PetShelter-minimal](https://github.com/MilanVives/PetShelter-minimal), kopie in [minikube-demo](06-Kubernetes/6c-minikube-demo/)
 
 ## [Les 7 – Helm Package Management](07-Helm/)
 

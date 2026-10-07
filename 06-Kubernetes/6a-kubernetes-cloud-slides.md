@@ -12,7 +12,19 @@ footer: 'DevOps & Cloud Infrastructure'
 
 Van één container naar een cluster in de cloud
 
-Volledige uitgewerkte notities: [kubernetes-cloud-start.md](kubernetes-cloud-start.md)
+Volledige uitgewerkte notities: [6a-kubernetes-cloud.md](6a-kubernetes-cloud.md)
+
+---
+
+## Les 6 in drie delen
+
+<style scoped>table { font-size: 26px; }</style>
+
+| | Bestand | Wat |
+|---|---|---|
+| **6a** ← vandaag | `6a-kubernetes-cloud.md` | Website op een **cloud cluster** (Linode) |
+| **6b** | `6b-kubernetes-fundamentals.md` | De **bouwstenen**: pods, services, config, opslag |
+| **6c** | `6c-kubernetes-minikube.md` | **3-tier app** lokaal op Minikube |
 
 ---
 
@@ -42,11 +54,7 @@ Traditioneel → Virtualisatie → Containers → Kubernetes
 
 ## Moderne deployment
 
-```
-Monoliet  →  Microservices  →  Docker      →  Kubernetes
-1 grote app  losse services    container      containers op
-                               per service    schaal draaien
-```
+![w:1100](images/6a-evolutie.png)
 
 - Microservices praten met elkaar via **API's**
 - Elke service in een container, mogelijk op **verschillende servers**
@@ -107,7 +115,7 @@ Managed Kubernetes: **EKS, AKS, GKE, DOKS, LKE**, ...
 <!-- _header: '' -->
 <!-- _footer: '' -->
 
-![bg contain](../images/k8s-architecture.gif)
+![bg contain](images/6a-architectuur.png)
 
 ---
 
@@ -170,17 +178,13 @@ Website is bereikbaar! ✅
 
 ## Fase 2: webshop groeit
 
+![bg right:40% contain](images/6a-loadbalancer.png)
+
 Eén webserver kan het niet meer aan en crasht.
 
 Oplossing: tweede container + **load balancer**
 
-```
-        👥
-        ⚖️
-   📦        📦
-```
-
-zie github.com/MilanVives/nginxloadbalancer
+zie [MilanVives/nginxloadbalancer](https://github.com/MilanVives/nginxloadbalancer)
 
 ---
 
@@ -200,6 +204,10 @@ zie github.com/MilanVives/nginxloadbalancer
 ---
 
 ## Stappenplan
+
+<style scoped>section { font-size: 28px; }</style>
+
+![w:1100](images/6a-stappenplan.png)
 
 1. **Lokaal**: website dockerizen + pushen (multi-platform!)
 2. **Cloud**: cluster aanmaken (Linode)
@@ -281,6 +289,23 @@ $env:KUBECONFIG="$PWD\virtuweb-kubeconfig.yaml"   # PowerShell
 
 ---
 
+## Minikube én cloud cluster tegelijk?
+
+`KUBECONFIG` gezet → `~/.kube/config` (Minikube) wordt **genegeerd**
+
+Beide gebruiken: beide bestanden in de lijst (`:` / Windows `;`)
+
+```bash
+export KUBECONFIG=$PWD/virtuweb-kubeconfig.yaml:$HOME/.kube/config
+kubectl config get-contexts             # * = actief
+kubectl config use-context minikube
+kubectl config current-context          # check vóór je iets verwijdert!
+```
+
+Eerste bestand in de lijst wint · `unset KUBECONFIG` = terug naar Minikube
+
+---
+
 ## Eerste kubectl commando's
 
 ```bash
@@ -349,7 +374,7 @@ virtuweb-deployment-57574d5d94-k5982   Running   node-2
 virtuweb-deployment-57574d5d94-xnxjm   Running   node-3
 ```
 
-Deployment → ReplicaSet → Pods
+![h:180](images/6a-deployment-replicaset.png)
 
 ---
 
@@ -391,20 +416,29 @@ Surf naar `http://<EXTERNAL-IP>` → **Werkt!** 🎉
 
 ## Wat is er gebeurd?
 
-```
-👥 → NodeBalancer (publiek IP)
-       → nodes :31019 (NodePort)
-         → Service (selector app=virtuweb)
-           → pods
-```
+<style scoped>section { font-size: 26px; }</style>
 
-`kubectl describe svc virtuweb-service` → **Endpoints** = pod IP's
+![bg right:45% contain](images/6a-service-loadbalancer.png)
+
+1. Kubernetes maakt de **Service**
+2. Linode maakt een **NodeBalancer** met publiek IP
+3. NodeBalancer → nodes op **NodePort** 31019
+4. Service → alle pods met `app=virtuweb`
+
+`kubectl describe svc virtuweb-service`
+**Endpoints** = de IP's van de pods
 
 ---
 
 ## Kubernetes = desired state
 
 "Ik wil **altijd** 3 pods van dit image"
+
+![w:950](images/6a-desired-state.png)
+
+---
+
+## Self-healing demonstreren
 
 ```bash
 kubectl get pods --watch            # terminal 1
@@ -476,8 +510,19 @@ Een vergeten cluster = **$46/maand**
 
 ---
 
+## Samenvatting
+
+![w:1100](images/6a-samenvatting.png)
+
+- **Deployment** = wat draait er en hoeveel
+- **Service** = hoe bereik je het
+- **LoadBalancer** = publiek IP via de cloud
+- **Desired state** = Kubernetes houdt het zo
+
+---
+
 ## Extra bronnen
 
 - kubernetes.io/docs/tutorials/kubernetes-basics → doorloop de 6 modules
 - kubectl cheat sheet
-- Volgende: **Les 6b** Fundamentals · **Les 6c** Minikube 3-tier app
+- Volgende: **6b** `6b-kubernetes-fundamentals.md` · **6c** `6c-kubernetes-minikube.md`

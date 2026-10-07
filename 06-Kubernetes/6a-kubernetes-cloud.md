@@ -1,6 +1,6 @@
 # Les 6a – Kubernetes Cloud Deployment
 
-> Slides voor in de les: [kubernetes-cloud-slides.md](kubernetes-cloud-slides.md) · Demobestanden: [cloud-demo/](cloud-demo/)
+> Slides voor in de les: [6a-kubernetes-cloud-slides.md](6a-kubernetes-cloud-slides.md) · Demobestanden: [6a-cloud-demo/](6a-cloud-demo/)
 
 ## 📋 Inhoud
 
@@ -138,7 +138,7 @@ graph TB
 
 | Opstelling | Gebruik |
 |---|---|
-| **All-in-one, single node** | Control plane en workload op één machine. Leren en testen → **Minikube** ([Les 6c](kubernetes-minikube.md)). |
+| **All-in-one, single node** | Control plane en workload op één machine. Leren en testen → **Minikube** ([Les 6c](6c-kubernetes-minikube.md)). |
 | **Eén control plane + meerdere workers** | **Deze les.** Bij managed Kubernetes beheert de provider de control plane voor jou. |
 | **High-availability control plane + meerdere workers** | Productie: meerdere control plane nodes, etcd gerepliceerd. Bij LKE een betalende optie. |
 
@@ -185,7 +185,7 @@ graph LR
 
 ## 4. Stap 1 – Website dockerizen en pushen
 
-Alle bestanden staan in [cloud-demo/](cloud-demo/).
+Alle bestanden staan in [6a-cloud-demo/](6a-cloud-demo/).
 
 **index.html**
 
@@ -365,7 +365,7 @@ $env:KUBECONFIG="$PWD\virtuweb-kubeconfig.yaml"
 > [!WARNING]
 > - Gebruik een **absoluut pad** (vandaar `$PWD`). Met een relatief pad werkt `kubectl` niet meer zodra je van map wisselt.
 > - `export` geldt enkel voor **deze terminal**. Nieuwe terminal = opnieuw instellen.
-> - De kubeconfig bevat een **admin-token**: wie het bestand heeft, beheert je cluster. **Nooit committen naar Git** (de [`.gitignore`](cloud-demo/.gitignore) in `cloud-demo/` sluit het uit).
+> - De kubeconfig bevat een **admin-token**: wie het bestand heeft, beheert je cluster. **Nooit committen naar Git** (de [`.gitignore`](6a-cloud-demo/.gitignore) in `6a-cloud-demo/` sluit het uit).
 
 ### Minikube én cloud cluster tegelijk?
 
@@ -462,7 +462,7 @@ Een losse pod is als een losse `docker run`. We willen een **gestructureerde, de
 
 Een **Deployment** beschrijft de **gewenste toestand**: welk image, hoeveel kopieën (**replicas**), welke labels.
 
-**[virtuweb-deployment.yaml](cloud-demo/virtuweb-deployment.yaml)**
+**[virtuweb-deployment.yaml](6a-cloud-demo/virtuweb-deployment.yaml)**
 
 ```yaml
 apiVersion: apps/v1
@@ -528,7 +528,7 @@ graph LR
 
 De pods draaien, maar hoe bereikt een bezoeker ze? Pods komen en gaan, en hun IP's veranderen. We hebben een **vast aanspreekpunt** nodig dat verkeer verdeelt: een **Service**.
 
-**[virtuweb-service.yaml](cloud-demo/virtuweb-service.yaml)**
+**[virtuweb-service.yaml](6a-cloud-demo/virtuweb-service.yaml)**
 
 ```yaml
 apiVersion: v1
@@ -600,7 +600,7 @@ Endpoints:                10.2.1.3:80,10.2.2.6:80,10.2.0.8:80
 | Type | Bereikbaar van | Typisch gebruik |
 |---|---|---|
 | `ClusterIP` (default) | Enkel binnen de cluster | Databases, interne API's |
-| `NodePort` | `<NodeIP>:30000–32767` | Testen, Minikube ([Les 6c](kubernetes-minikube.md)) |
+| `NodePort` | `<NodeIP>:30000–32767` | Testen, Minikube ([Les 6c](6c-kubernetes-minikube.md)) |
 | `LoadBalancer` | Publiek IP via de cloudprovider | Je site op internet zetten (deze les) |
 
 > [!TIP]
@@ -784,8 +784,8 @@ graph LR
 
 ### Volgende stappen
 
-- **[Les 6b – Kubernetes Fundamentals](kubernetes-fundamentals.md):** de theorie achter pods, services, deployments, ConfigMaps, Secrets, namespaces en labels.
-- **[Les 6c – Kubernetes met Minikube](kubernetes-minikube.md):** een 3-tier applicatie (frontend, backend, database) lokaal deployen.
+- **[Les 6b – Kubernetes Fundamentals](6b-kubernetes-fundamentals.md):** de theorie achter pods, services, deployments, ConfigMaps, Secrets, namespaces en labels.
+- **[Les 6c – Kubernetes met Minikube](6c-kubernetes-minikube.md):** een 3-tier applicatie (frontend, backend, database) lokaal deployen.
 
 ### Extra bronnen
 

@@ -1,8 +1,8 @@
 # Les 6c – Kubernetes met Minikube: 3-tier Pet Shelter
 
-> In [Les 6a](kubernetes-cloud-start.md) zette je één website op een cloud cluster. In [Les 6b](kubernetes-fundamentals.md) zag je de bouwstenen. Nu combineer je alles: een applicatie met **drie samenwerkende services**, lokaal op je eigen laptop met **Minikube**.
+> In [Les 6a](6a-kubernetes-cloud.md) zette je één website op een cloud cluster. In [Les 6b](6b-kubernetes-fundamentals.md) zag je de bouwstenen. Nu combineer je alles: een applicatie met **drie samenwerkende services**, lokaal op je eigen laptop met **Minikube**.
 
-**Repository voor deze les:** [MilanVives/PetShelter-minimal](https://github.com/MilanVives/PetShelter-minimal) (kopie in [minikube-demo/](minikube-demo/))
+**Repository voor deze les:** [MilanVives/PetShelter-minimal](https://github.com/MilanVives/PetShelter-minimal) (kopie in [6c-minikube-demo/](6c-minikube-demo/))
 
 ```bash
 git clone https://github.com/MilanVives/PetShelter-minimal.git
@@ -98,7 +98,7 @@ minikube   Ready    control-plane   1m    v1.3x
 ```
 
 > [!WARNING]
-> **Kwam je uit Les 6a?** Staat `KUBECONFIG` nog op je Linode-bestand, dan praat `kubectl` met de cloud en niet met Minikube. Check met `kubectl config current-context` (moet `minikube` zijn) of doe `unset KUBECONFIG`. Zie [Minikube én cloud cluster tegelijk](kubernetes-cloud-start.md#minikube-én-cloud-cluster-tegelijk).
+> **Kwam je uit Les 6a?** Staat `KUBECONFIG` nog op je Linode-bestand, dan praat `kubectl` met de cloud en niet met Minikube. Check met `kubectl config current-context` (moet `minikube` zijn) of doe `unset KUBECONFIG`. Zie [Minikube én cloud cluster tegelijk](6a-kubernetes-cloud.md#minikube-én-cloud-cluster-tegelijk).
 
 ---
 
@@ -803,7 +803,7 @@ graph TB
 
 ### Volgende stappen
 
-- **Naar de cloud:** dezelfde manifests op een cloud cluster ([Les 6a](kubernetes-cloud-start.md)). Verander `frontend-service` naar `type: LoadBalancer`, haal `imagePullPolicy: Never` weg en push je images **multi-platform** naar Docker Hub.
+- **Naar de cloud:** dezelfde manifests op een cloud cluster ([Les 6a](6a-kubernetes-cloud.md)). Verander `frontend-service` naar `type: LoadBalancer`, haal `imagePullPolicy: Never` weg en push je images **multi-platform** naar Docker Hub.
 - **Helm:** deze manifests ombouwen tot een herbruikbare chart: [Les 7 – Helm PetShelter migratie](../07-Helm/helm-petshelter.md).
 - **Ingress:** meerdere services achter één ingang, met HTTPS: [Les 8](../08-Ingress-and-Reverse-Proxies/).
 

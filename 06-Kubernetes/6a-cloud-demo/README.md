@@ -1,6 +1,6 @@
 # Virtuweb – cloud demo (Les 6a)
 
-Bestanden voor de demo in [kubernetes-cloud-start.md](../kubernetes-cloud-start.md).
+Bestanden voor de demo in [6a-kubernetes-cloud.md](../6a-kubernetes-cloud.md).
 
 | Bestand | Doel |
 |---|---|
