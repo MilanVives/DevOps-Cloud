@@ -1,0 +1,44 @@
+# ⚠️ Basic version: credentials and DB settings are hardcoded in plain text.
+# Fine for a first demo, NOT for real use -> see ../k8s for the ConfigMap/Secret version.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: docker.io/dimilan/pet-shelter-backend:latest
+        #imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MONGO_USERNAME
+          value: admin
+        - name: MONGO_PASSWORD
+          value: password
+        - name: MONGO_HOST
+          value: mongodb-service
+        - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_DATABASE
+          value: petshelter
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 5000
+    targetPort: 5000

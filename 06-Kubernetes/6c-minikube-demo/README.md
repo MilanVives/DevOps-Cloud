@@ -75,7 +75,23 @@ docker build -t dimilan/pet-shelter-frontend:latest .
 cd ..
 ```
 
-3. Apply Kubernetes configurations:
+3. Apply Kubernetes configurations.
+
+The demo comes in two versions:
+
+| Folder | What it shows |
+|---|---|
+| `k8s-basic/` | Step 1: credentials and DB settings **hardcoded in plain text** in the Deployments (just like `docker-compose.yml`) |
+| `k8s/` | Step 2: the same values **extracted** into a ConfigMap (`mongodb-configmap.yaml`) and a Secret (`mongodb-secret.yaml`) |
+
+Step 1: the basic version:
+```bash
+kubectl apply -f k8s-basic/
+```
+
+> ⚠️ Anyone who can read the manifests (or the Git repo) can see the password. The same values also show up twice (in MongoDB and in the backend), so changing the password means editing two files.
+
+Step 2: refactor to ConfigMap + Secret (`kubectl apply` updates the same Deployments in place):
 ```bash
 kubectl apply -f k8s/mongodb-secret.yaml
 kubectl apply -f k8s/mongodb-configmap.yaml
@@ -112,7 +128,7 @@ kubectl logs -l app=backend
 # Database seeded with initial pets
 ```
 
-**Note:** Images use `imagePullPolicy: Never` to use locally built images in Minikube instead of pulling from DockerHub.
+**Note:** By default the Deployments pull the images from Docker Hub (`docker.io/dimilan/...`). To use the images you built inside Minikube in step 2 instead, uncomment `imagePullPolicy: Never` in `backend-deployment.yaml` and `frontend-deployment.yaml`.
 
 ## Kubernetes Resources
 
@@ -133,13 +149,19 @@ The backend constructs the MongoDB connection string from individual environment
 
 ## Environment Variables
 
+In `k8s-basic/` all values are written directly in the Deployments. In `k8s/` they come from the Secret or the ConfigMap, as shown below.
+
 ### Backend
-- `MONGO_URL`: MongoDB connection string (from ConfigMap in K8s)
+- `MONGO_USERNAME`: MongoDB username (Secret `mongodb-secret`, key `username`)
+- `MONGO_PASSWORD`: MongoDB password (Secret `mongodb-secret`, key `password`)
+- `MONGO_HOST`: MongoDB hostname, `mongodb-service` (ConfigMap `mongodb-config`, key `database-url`)
+- `MONGO_PORT`: MongoDB port, `27017` (ConfigMap `mongodb-config`, key `database-port`)
+- `MONGO_DATABASE`: database name, `petshelter` (ConfigMap `mongodb-config`, key `database-name`)
 - `PORT`: Server port (default: 5000)
 
 ### MongoDB
-- `MONGO_INITDB_ROOT_USERNAME`: Admin username (from Secret in K8s)
-- `MONGO_INITDB_ROOT_PASSWORD`: Admin password (from Secret in K8s)
+- `MONGO_INITDB_ROOT_USERNAME`: Admin username (Secret `mongodb-secret`, key `username`)
+- `MONGO_INITDB_ROOT_PASSWORD`: Admin password (Secret `mongodb-secret`, key `password`)
 
 ## Notes
 
