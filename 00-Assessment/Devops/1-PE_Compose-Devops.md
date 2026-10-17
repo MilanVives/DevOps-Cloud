@@ -82,8 +82,10 @@ De applicaties hoeven niet af te zijn, maar de drie services moeten **effectief 
 
 ### PE1-R3: Images publiek op Docker Hub
 
-- Publiceer je images als `<dockerhub>/frontend:latest` en `<dockerhub>/backend:latest` (`dockerhub` uit `project.yaml`).
-- De images zijn **publiek** en `compose.yaml` gebruikt **deze** images (niet `build:`).
+- Publiceer je frontend- en backend-image **onder je eigen Docker Hub-account** (`dockerhub` uit `project.yaml`), bv. `<dockerhub>/frontend:latest` en `<dockerhub>/backend:latest`.
+- De images zijn **publiek** en bestaan voor **`linux/amd64`** — de automatische controle draait op een Intel/AMD-server. Werk je op een Mac met Apple Silicon, bouw dan voor beide platformen:
+  `docker buildx build --platform linux/amd64,linux/arm64 -t <dockerhub>/backend:latest --push backend/`
+- `compose.yaml` gebruikt **deze** images (`image:`), niet `build:`.
 
 ### PE1-R4: Veilige compose-configuratie
 
@@ -134,7 +136,7 @@ Bekijk het resultaat onder **Releases**. Elke controle hierboven (PE1-R1 … R6)
 | PE1-R0: project.yaml ingevuld | 0 | vereist voor de andere controles |
 | PE1-R1: Structuur en geldige compose | 0.1 | bestanden aanwezig, `docker compose config` |
 | PE1-R2: Dockerfiles volgens best practices | 0.2 | `hadolint`, geen errors |
-| PE1-R3: Images publiek op Docker Hub | 0.2 | `docker manifest inspect`, images gebruikt in `compose.yaml` |
+| PE1-R3: Images publiek op Docker Hub | 0.2 | `docker manifest inspect` (publiek, `linux/amd64`), images gebruikt in `compose.yaml` |
 | PE1-R4: Veilige compose-configuratie | 0.3 | enkel de frontend publiceert een poort (`frontend_port`), geen hardgecodeerde wachtwoorden, `.env` niet gecommit |
 | PE1-R5: Applicatie start volledig automatisch | 0.3 | `docker compose up --wait` + HTTP 200 op `frontend_port` |
 | PE1-R6: Documentatie volledig | 0.1 | koppen aanwezig, afbeeldingen bestaan |
@@ -155,7 +157,7 @@ Bekijk het resultaat onder **Releases**. Elke controle hierboven (PE1-R1 … R6)
 
 - Test lokaal precies wat de controle doet: `cp .env.example .env && docker compose up -d --wait && curl -I localhost:<frontend_port>`.
 - Lint je Dockerfiles lokaal: `docker run --rm -i hadolint/hadolint < backend/Dockerfile`.
-- Bouw je images voor `linux/amd64` als je een Mac met Apple Silicon hebt: `docker buildx build --platform linux/amd64 …`.
+- Controleer je platformen: `docker manifest inspect -v <dockerhub>/backend:latest | grep architecture` moet `amd64` tonen.
 - De code in je repository moet overeenkomen met je gepubliceerde images.
 
 ---
