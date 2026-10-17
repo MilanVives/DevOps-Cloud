@@ -45,7 +45,7 @@ Dit is de laatste stap: je neemt de applicatie die je al gecontaineriseerd hebt 
 ## Repository
 
 - Je krijgt voor de eindopdracht een **nieuwe repository** via Classroom 50:
-  **Accept-link 3SD (AJ 26-27):** LINK VOLGT
+  **Accept-link 3SD (AJ 26-27):** https://classroom50.org/VivesMDima/2627-devops-ti/assignments/final/accept
 - De template heeft dezelfde mappenstructuur als je projectrepository. Kopieer `frontend/`, `backend/`, `compose.yaml` en `k8s/` uit je projectrepository naar deze nieuwe repository.
 - Vul `project.yaml` aan met `live_url` (de HTTPS-URL van je productie-omgeving).
 
@@ -114,7 +114,7 @@ Kies één van beide opties (zie [Les 8 – Ingress & Reverse Proxies](../../08-
 - **Optie A — Traefik ingress**: een Traefik ingress controller in je cluster, met automatisch SSL-certificaat (Let's Encrypt).
 - **Optie B — Cloudflare tunnel**: een Cloudflare tunnel naar je cluster, met HTTPS via Cloudflare.
 
-In beide gevallen: geen rechtstreeks opengezette NodePorts, en de applicatie is zonder browserwaarschuwing bereikbaar. Ook `/nodeinfo` moet via dit domein bereikbaar zijn.
+In beide gevallen: geen rechtstreeks opengezette NodePorts, en de applicatie is zonder browserwaarschuwing bereikbaar. Routeer ook het pad **`/nodeinfo`** naar de Service `nodeinfo` (poort 80), zodat `https://<jouw-domein>/nodeinfo` werkt.
 
 > ⚠️ De VIVES-firewall blokkeert soms niet-standaard HTTP/HTTPS-poorten — gebruik 80/443.
 
@@ -134,7 +134,7 @@ In beide gevallen: geen rechtstreeks opengezette NodePorts, en de applicatie is 
 
 ### Stap 11 — Schrijf je analysedossier
 
-`docs/analysedossier.md` (of `.pdf`/`.tex` in `docs/`) bevat:
+`docs/analysedossier.md` volgt de koppen uit de template (**Architectuur, Cluster, Deployment, Secrets, Helm en omgevingen, Schaalbaarheid, HTTPS, CI/CD, Monitoring, Keuzes**; niet hernoemen) en bevat minstens 8 screenshots in `docs/images/`. Een extra PDF-versie mag. Inhoudelijk:
 
 - Beschrijving van je applicatie en een **architectuurschema** (cluster, nodes, namespaces, ingress/tunnel, monitoring).
 - Een **stappenplan** van stap 2 t.e.m. 10: wat heb je gedaan, met welke **commando's**, en hoe kan iemand anders het reproduceren?
@@ -164,14 +164,15 @@ Bij elke indiening krijg je onder **Releases** een overzicht. Deze controles zij
 
 | Controle | Wat |
 |---|---|
-| F-R1: Helm chart geldig | `helm lint` en `helm template` met `values-test.yaml` én `values-prod.yaml`, gevalideerd met `kubeconform` |
-| F-R2: Schaalbaarheid geconfigureerd | productie: ≥ 2 replicas frontend/backend, `topologySpreadConstraints`, HPA voor de backend |
+| F-R0: project.yaml ingevuld | `naam`, `studentennummer`, `github`, `dockerhub` en `live_url` ingevuld |
+| F-R1: Helm chart geldig | `helm lint` en `helm template` met `values-test.yaml` én `values-prod.yaml`, gevalideerd met `kubeconform`; naast `nodeinfo` minstens 3 workloads |
+| F-R2: Schaalbaarheid geconfigureerd | productie: elke Deployment ≥ 2 replicas (of via HPA) en `topologySpreadConstraints`, minstens één HPA |
 | F-R3: Resources en probes | `requests`/`limits` en `readinessProbe` op elke container |
-| F-R4: Geen gecommitte secrets | `gitleaks` over de volledige Git-geschiedenis |
-| F-R5: CI/CD aanwezig | workflow met trigger op `main`, `paths`-filter en `timeout-minutes` |
+| F-R4: Geen gecommitte secrets | `gitleaks` over de volledige Git-geschiedenis, geen `*.tfstate` in de repository |
+| F-R5: CI/CD aanwezig | workflow met trigger op `main`, `paths`-filter, `timeout-minutes` op elke job, een image-build en `helm upgrade --install` |
 | F-R6: Live via HTTPS | `live_url` antwoordt met HTTP 200 over HTTPS met geldig certificaat |
 | F-R7: Multi-node | `live_url/nodeinfo` toont minstens **3 verschillende nodes** |
-| F-R8: Analysedossier volledig | verplichte onderdelen en afbeeldingen aanwezig |
+| F-R8: Analysedossier volledig | alle koppen uit de template en minstens 8 screenshots die in de repository staan |
 
 ### Puntenverdeling (100% van deze opdracht)
 
