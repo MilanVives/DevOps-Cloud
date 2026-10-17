@@ -45,7 +45,7 @@ Je bouwt de **volledige cloudinfrastructuur** voor een applicatie: je maakt ze a
 ## Repository
 
 - Je krijgt voor de eindopdracht een **nieuwe repository** via Classroom 50:
-  **Accept-link 3CYB (AJ 26-27):** LINK VOLGT
+  **Accept-link 3CYB (AJ 26-27):** https://classroom50.org/VivesMDima/2627-cloudinfra-ti/assignments/final/accept
 - De template heeft dezelfde mappenstructuur als je projectrepository. Kopieer je `app/` en `k8s/` uit je projectrepository.
 - Vul `project.yaml` aan met `live_url` (de HTTPS-URL van je productie-omgeving).
 
