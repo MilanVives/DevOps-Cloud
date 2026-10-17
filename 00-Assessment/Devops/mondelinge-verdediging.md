@@ -1,6 +1,6 @@
 # Mondelinge Verdediging — Devops & Cloud Computing
 
-> ⚠️ **Doelgroep:** deze evaluatievorm geldt enkel voor studenten **Devops & Cloud Computing** (softwareontwikkeling). Studenten **Cloud Infrastructure** (Cybersecurity & Infrastructure) volgen een andere evaluatie voor dit vak.
+> ⚠️ **Doelgroep:** deze evaluatievorm geldt enkel voor studenten **Devops & Cloud Computing** (softwareontwikkeling). Studenten **Cloud Infrastructure** (Cybersecurity & Infrastructure) volgen een eigen verdediging, zie [Mondelinge Verdediging — Cloud Infrastructure](../CloudInfrastructure/mondelinge-verdediging.md).
 
 ---
 
@@ -8,7 +8,7 @@
 
 Met AI-tools (ChatGPT, Copilot, Claude, …) is het vandaag erg eenvoudig om een volledig werkend project te laten genereren zonder de onderliggende concepten te begrijpen. Een perfect ogende `docker-compose.yml` of een correct draaiende deployment zegt niets over of de student weet **wat** hij/zij heeft opgeleverd en **waarom** het zo werkt.
 
-Daarom wordt **niet elke PE afzonderlijk mondeling verdedigd** — enkel het volledige eindproject (zie ECTS-fiche, 80% van het eindcijfer: cloud deployment, documentatie en **mondelinge verdediging**, zie [Final Assessment](4-Final-Assessment.md)) wordt aan het einde van het semester, tijdens de examenperiode, één keer individueel mondeling verdedigd. PE1, PE2 en PE3 worden dus niet apart verdedigd. Een technisch perfect eindproject dat de student niet kan uitleggen, of waarbij de student de meest basale commando's niet kent, **kan niet slagen** — ongeacht de kwaliteit van de code.
+Daarom wordt **niet elke PE afzonderlijk mondeling verdedigd** — enkel het volledige eindproject (zie ECTS-fiche, 80% van het eindcijfer: cloud deployment, documentatie en **mondelinge verdediging**, zie [Final Assessment](3-Final-Assessment.md)) wordt aan het einde van het semester, tijdens de examenperiode, één keer individueel mondeling verdedigd. PE1 en PE1 worden dus niet apart verdedigd. Een technisch perfect eindproject dat de student niet kan uitleggen, of waarbij de student de meest basale commando's niet kent, **kan niet slagen** — ongeacht de kwaliteit van de code.
 
 ---
 
@@ -18,13 +18,16 @@ Daarom wordt **niet elke PE afzonderlijk mondeling verdedigd** — enkel het vol
 | ----------- | ------------------------------------------------------------------------------------------------------------------- |
 | **Wie**     | Individueel — elke student wordt apart ondervraagd (dit vak wordt individueel uitgevoerd)                           |
 | **Duur**    | 10 à maximum 15 minuten per student                                                                                 |
-| **Wanneer** | Tijdens de examenperiode, na afloop van het volledige eindproject (PE1-3 + eindopdracht)                            |
+| **Wanneer** | Tijdens de examenperiode, na afloop van het volledige eindproject (PE1-2 + eindopdracht)                            |
 | **Waar**    | Standaard op de campus. Uitzonderingen (bv. online) enkel na motivatie per mail aan de docent                       |
 | **Vereist** | Laptop met werkend project (lokaal en/of live deployment bereikbaar), terminal-toegang. Live demo's zijn aangeraden |
 
 ---
 
 ## Structuur van de verdediging (± 10-15 min)
+
+0. **Clustercontrole** (± 1 min)
+   Student toont live `kubectl get nodes -o wide` en `kubectl get pods -o wide -A` op de cloudcluster. Draait alles op één machine (zie het **uitsluitingscriterium** in de [Final Assessment](3-Final-Assessment.md)), dan stopt de verdediging hier.
 
 1. **Live command demo** (± 4-5 min)
    Student voert live een opdracht uit of past iets aan op zijn/haar project (bv. "voeg een volume/ConfigMap toe", "toon de logs van de backend", "schaal deze service", "trigger een herdeployment via de CI/CD pipeline").
@@ -43,7 +46,7 @@ Daarom wordt **niet elke PE afzonderlijk mondeling verdedigd** — enkel het vol
 ## Scoring — gating-multiplier
 
 > [!WARNING]
-> De mondelinge verdediging levert **geen aparte punten** op, maar werkt als een **vermenigvuldigingsfactor** op de score van de [Final Assessment](4-Final-Assessment.md) (de 80% "project" component uit de ECTS-fiche): `Eindscore = Score rubriek × Factor verdediging`. PE1, PE2 en PE3 (de 20% permanente evaluatie) worden **niet** door deze factor beïnvloed — die scores staan al vast vóór de verdediging plaatsvindt. Een student met een perfect eindproject maar zonder begrip kan dus **nooit meer dan 30%** van de eindopdracht-punten behalen.
+> De mondelinge verdediging levert **geen aparte punten** op, maar werkt als een **vermenigvuldigingsfactor** op de score van de [Final Assessment](3-Final-Assessment.md) (de 80% "project" component uit de ECTS-fiche): `Eindscore = Score rubriek × Factor verdediging`. PE1 en PE1 (de 20% permanente evaluatie) worden **niet** door deze factor beïnvloed — die scores staan al vast vóór de verdediging plaatsvindt. Een student met een perfect eindproject maar zonder begrip kan dus **nooit meer dan 30%** van de eindopdracht-punten behalen.
 
 | Niveau                | Factor | Kenmerken                                                                                                                                                                                                                                                |
 | --------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

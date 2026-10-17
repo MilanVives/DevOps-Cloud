@@ -23,15 +23,16 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ### [Devops & Cloud Computing](00-Assessment/Devops/)
 
-- [PE 1 – GitHub Classroom](00-Assessment/Devops/1-PE_GitHub-Classroom.md) - Uitnodiging accepteren en eerste commit pushen (pass/fail)
-- [PE 2 – Docker Compose](00-Assessment/Devops/2-PE_Compose-Devops.md) - Permanente evaluatieopdracht: drieservicetoepassing containeriseren met Docker Compose
-- [PE 3 – Minikube](00-Assessment/Devops/3-PE_Minikube-Devops.md) - Permanente evaluatieopdracht: deployment op Minikube
-- [Final Assessment (80%)](00-Assessment/Devops/4-Final-Assessment.md) - Stap-voor-stap cloud deployment: cluster, secrets, Helm, ingress/HTTPS, CI/CD, monitoring, bouwt verder op PE1-3
+- [PE 1 – Docker Compose](00-Assessment/Devops/1-PE_Compose-Devops.md) - Projectrepository opzetten + drieservicetoepassing containeriseren met Docker Compose
+- [PE 2 – Minikube](00-Assessment/Devops/2-PE_Minikube-Devops.md) - Deployment op Minikube met ConfigMaps en Secrets
+- [Final Assessment (80%)](00-Assessment/Devops/3-Final-Assessment.md) - Cloud deployment op een echte multi-node cluster: secrets, Helm, schaalbaarheid, HTTPS, CI/CD, monitoring
 - [Mondelinge Verdediging](00-Assessment/Devops/mondelinge-verdediging.md) - Eén verdediging aan het einde voor het volledige project - toetst begrip naast projectkwaliteit
 
 ### [Cloud Infrastructure](00-Assessment/CloudInfrastructure/)
 
-*[Komt binnenkort]*
+- [PE 1 – Minikube](00-Assessment/CloudInfrastructure/1-PE_Minikube-CloudInfra.md) - Projectrepository opzetten + applicatie met drie services deployen op Minikube
+- [Final Assessment (80%)](00-Assessment/CloudInfrastructure/2-Final-Assessment-CloudInfra.md) - Terraform/OpenTofu, Ansible, Helm test/prod, HTTPS, extra features en externe monitoring op een echte multi-node cluster
+- [Mondelinge Verdediging](00-Assessment/CloudInfrastructure/mondelinge-verdediging.md) - Eén verdediging aan het einde, gating-multiplier
 
 ## [Les 1 – Docker Basics](01-Docker/)
 
@@ -271,7 +272,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 # Curriculum per opleiding
 
-Dit vak wordt gebruikt voor twee opleidingen met elk hun eigen traject door de lessen hierboven. Zie ook [Evaluatie](00-Assessment/) — dat hoofdstuk (permanente evaluatie + eindopdracht) is **enkel voor Devops & Cloud Computing**.
+Dit vak wordt gebruikt voor twee opleidingen met elk hun eigen traject door de lessen hierboven. Zie ook [Evaluatie](00-Assessment/) — elke opleiding heeft er een eigen permanente evaluatie en eindopdracht.
 
 ## Devops & Cloud Computing (B-VIV-V3R316)
 
@@ -288,7 +289,7 @@ Dit vak wordt gebruikt voor twee opleidingen met elk hun eigen traject door de l
 | 9 | [CI/CD](09-CI-CD/) | Verplicht |
 | 12 | [Monitoring & Observability](12-Monitoring/) | Optioneel, indien tijd |
 
-> Evaluatie: zie [PE1-3 en Final Assessment](00-Assessment/Devops/).
+> Evaluatie: zie [PE1-2 en Final Assessment](00-Assessment/Devops/).
 
 ## Cloud Infrastructure (B-VIV-V3R449)
 
@@ -303,7 +304,7 @@ Dit vak wordt gebruikt voor twee opleidingen met elk hun eigen traject door de l
 | 11 | [Security & DevSecOps](11-Security-and-Devops/) | Optioneel, indien tijd |
 | 12 | [Monitoring & Observability](12-Monitoring/) | Optioneel, indien tijd |
 
-> Evaluatie: zie [00-Assessment/CloudInfrastructure](00-Assessment/CloudInfrastructure/) *(nog in te vullen)*.
+> Evaluatie: zie [PE1 en Final Assessment](00-Assessment/CloudInfrastructure/).
 
 ---
 
