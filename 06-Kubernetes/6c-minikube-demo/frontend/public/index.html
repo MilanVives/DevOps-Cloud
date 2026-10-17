@@ -32,11 +32,16 @@
         async function loadPets() {
             const response = await fetch(API_URL);
             const pets = await response.json();
-            document.getElementById('pets').innerHTML = pets.map(pet => 
-                `<div class="pet">
-                    <strong>${pet.name}</strong> - ${pet.type}, ${pet.age} years old
-                </div>`
-            ).join('');
+            // textContent, not innerHTML: pet names come from users and must never run as HTML.
+            const list = document.getElementById('pets');
+            list.replaceChildren(...pets.map(pet => {
+                const div = document.createElement('div');
+                div.className = 'pet';
+                const name = document.createElement('strong');
+                name.textContent = pet.name;
+                div.append(name, ` - ${pet.type}, ${pet.age} years old`);
+                return div;
+            }));
         }
 
         async function addPet() {
