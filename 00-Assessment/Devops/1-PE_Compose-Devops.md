@@ -14,7 +14,7 @@ Doe dit **meteen** — je hebt de repository nodig om in te werken.
 
 1. **Aanvaard de uitnodiging van de GitHub-organisatie `VivesMDima`** die je per mail ontvangt (check ook je spam). Zonder lidmaatschap van de organisatie werkt de accept-link niet.
 2. **Aanvaard de opdracht** via de accept-link van je klasgroep:
-   **Accept-link 3SD (AJ 26-27):** LINK VOLGT
+   **Accept-link 3SD (AJ 26-27):** https://classroom50.org/VivesMDima/2627-devops-ti/assignments/project/accept
 3. Classroom 50 maakt een **privé repository** voor jou aan: `VivesMDima/2627-devops-ti-project-<jouw-github-username>`.
 4. **Clone die repository** — niet de template-repository waarop ze gebaseerd is!
 5. Vul `project.yaml` in. De automatische controles lezen dit bestand:
