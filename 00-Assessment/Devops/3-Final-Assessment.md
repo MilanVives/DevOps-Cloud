@@ -166,7 +166,7 @@ Bij elke indiening krijg je onder **Releases** een overzicht. Deze controles zij
 |---|---|
 | F-R0: project.yaml ingevuld | `naam`, `studentennummer`, `github`, `dockerhub` en `live_url` ingevuld |
 | F-R1: Helm chart geldig | `helm lint` en `helm template` met `values-test.yaml` én `values-prod.yaml`, gevalideerd met `kubeconform`; naast `nodeinfo` minstens 3 workloads |
-| F-R2: Schaalbaarheid geconfigureerd | productie: elke Deployment ≥ 2 replicas (of via HPA) en `topologySpreadConstraints`, minstens één HPA |
+| F-R2: Schaalbaarheid geconfigureerd | productie: elke Deployment behalve de database ≥ 2 replicas (of via HPA) en `topologySpreadConstraints`, minstens één HPA |
 | F-R3: Resources en probes | `requests`/`limits` en `readinessProbe` op elke container |
 | F-R4: Geen gecommitte secrets | `gitleaks` over de volledige Git-geschiedenis, geen `*.tfstate` in de repository |
 | F-R5: CI/CD aanwezig | workflow met trigger op `main`, `paths`-filter, `timeout-minutes` op elke job, een image-build en `helm upgrade --install` |

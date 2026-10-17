@@ -86,6 +86,7 @@ scripts/submit.sh
 ### Stap 2 — Beheer met Ansible
 
 - Je cloud-VM's/nodes zitten in een **Ansible inventory** in `ansible/inventory/` (statisch of dynamisch, bv. gegenereerd uit Terraform-outputs).
+- Zet de collecties die je playbooks gebruiken (bv. `kubernetes.core`) in `ansible/requirements.yml`; je playbooks staan in `ansible/playbooks/`.
 - Installaties en configuraties gebeuren **zoveel mogelijk via Ansible-playbooks** in plaats van manueel: bv. pakketten, hardening, de monitoring-agent, de Helm-deploys (`kubernetes.core.helm`).
 - Playbooks zijn **idempotent**: twee keer na elkaar uitvoeren geeft geen wijzigingen (`changed=0`) de tweede keer.
 
@@ -103,7 +104,7 @@ scripts/submit.sh
 ### Stap 5 — Publiek bereikbaar via HTTPS
 
 - Maak de applicatie bereikbaar via **HTTPS op een domeinnaam**, via een ingress controller (bv. **Traefik** met Let's Encrypt) of een **Cloudflare tunnel**. Zie [Les 8 – Ingress & Reverse Proxies](../../08-Ingress-and-Reverse-Proxies/).
-- Geen rechtstreeks opengezette NodePorts. Ook `/nodeinfo` moet via dit domein bereikbaar zijn.
+- Geen rechtstreeks opengezette NodePorts. Routeer ook het pad **`/nodeinfo`** naar de Service `nodeinfo` (poort 80), zodat `https://<jouw-domein>/nodeinfo` werkt.
 
 > ⚠️ De VIVES-firewall blokkeert soms niet-standaard HTTP/HTTPS-poorten — gebruik 80/443.
 
@@ -124,7 +125,7 @@ Onderzoek de volgende features en implementeer er **minstens twee** die een meer
 
 ### Stap 8 — Schrijf je analysedossier
 
-`docs/analysedossier.md` (of `.pdf`/`.tex` in `docs/`) bevat:
+`docs/analysedossier.md` volgt de koppen uit de template (**Architectuur, Cloudinfrastructuur, Ansible, Deployment, Helm en omgevingen, Schaalbaarheid, HTTPS, Extra features, Monitoring, Conclusies**; niet hernoemen) en bevat minstens 8 screenshots in `docs/images/`. Een extra PDF-versie mag. Inhoudelijk:
 
 - Beschrijving van je applicatie en een **architectuurschema** (cloudresources, nodes, netwerk, namespaces, ingress/tunnel, VPN, monitoring).
 - Een **stappenplan**: hoe is alles gedeployed, met welke **commando's**, en hoe kan iemand anders het reproduceren en testen?
@@ -154,14 +155,15 @@ Bij elke indiening krijg je onder **Releases** een overzicht. Deze controles zij
 
 | Controle | Wat |
 |---|---|
+| F-R0: project.yaml ingevuld | `naam`, `studentennummer`, `github` en `live_url` ingevuld |
 | F-R1: Terraform geldig | `tofu fmt -check` en `tofu validate` in `infra/terraform/` |
-| F-R2: Ansible geldig | inventory aanwezig, `ansible-playbook --syntax-check` en `ansible-lint` op de playbooks |
-| F-R3: Helm chart geldig | `helm lint` en `helm template` met `values-test.yaml` én `values-prod.yaml`, gevalideerd met `kubeconform` |
-| F-R4: Schaalbaarheid geconfigureerd | productie: ≥ 2 replicas, `topologySpreadConstraints`, minstens één HPA |
+| F-R2: Ansible geldig | inventory met hosts, collecties uit `requirements.yml`, `ansible-playbook --syntax-check` en `ansible-lint` op de playbooks |
+| F-R3: Helm chart geldig | `helm lint` en `helm template` met `values-test.yaml` én `values-prod.yaml`, gevalideerd met `kubeconform`; naast `nodeinfo` minstens 3 workloads |
+| F-R4: Schaalbaarheid geconfigureerd | productie: elke Deployment behalve de database ≥ 2 replicas (of via HPA) en `topologySpreadConstraints`, minstens één HPA |
 | F-R5: Geen gecommitte secrets | `gitleaks` over de volledige Git-geschiedenis, geen `*.tfstate` in de repository |
 | F-R6: Live via HTTPS | `live_url` antwoordt met HTTP 200 over HTTPS met geldig certificaat |
 | F-R7: Multi-node | `live_url/nodeinfo` toont minstens **3 verschillende nodes** |
-| F-R8: Analysedossier volledig | verplichte onderdelen en afbeeldingen aanwezig |
+| F-R8: Analysedossier volledig | alle koppen uit de template en minstens 8 screenshots die in de repository staan |
 
 ### Puntenverdeling (100% van deze opdracht)
 
