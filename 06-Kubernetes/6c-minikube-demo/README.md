@@ -40,17 +40,19 @@ Access the application at `http://localhost:3000`
 
 Build and tag images:
 
-```bash
-# Backend
-cd backend
-docker build -t dimilan/pet-shelter-backend:latest .
-docker push dimilan/pet-shelter-backend:latest
+Build for **both** `linux/amd64` and `linux/arm64`: an image built on an Apple Silicon Mac is
+arm64-only and will not run on Intel/AMD machines, most cloud nodes, or GitHub Actions runners.
 
-# Frontend
-cd ../frontend
-docker build -t dimilan/pet-shelter-frontend:latest .
-docker push dimilan/pet-shelter-frontend:latest
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -t dimilan/pet-shelter-backend:latest --push backend/
+docker buildx build --platform linux/amd64,linux/arm64 -t dimilan/pet-shelter-frontend:latest --push frontend/
+
+# Check: both architectures should be listed
+docker manifest inspect -v dimilan/pet-shelter-backend:latest | grep architecture
 ```
+
+Both services expose `GET /health`; the backend answers 503 while MongoDB is unreachable,
+which makes it a good target for healthchecks and readiness probes.
 
 ## Deploying to Kubernetes (Minikube)
 

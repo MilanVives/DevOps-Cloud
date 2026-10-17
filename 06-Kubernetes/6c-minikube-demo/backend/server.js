@@ -52,15 +52,36 @@ mongoose.connection.once('open', () => {
   seedDatabase();
 });
 
+// 200 only while MongoDB is connected: used by Docker healthchecks and Kubernetes probes.
+app.get('/health', (req, res) => {
+  const up = mongoose.connection.readyState === 1;
+  res.status(up ? 200 : 503).json({ status: up ? 'ok' : 'database unavailable' });
+});
+
 app.get('/api/pets', async (req, res) => {
-  const pets = await Pet.find();
-  res.json(pets);
+  try {
+    res.json(await Pet.find());
+  } catch (err) {
+    console.error('Error reading pets:', err);
+    res.status(500).json({ error: 'Failed to read pets' });
+  }
 });
 
 app.post('/api/pets', async (req, res) => {
-  const pet = new Pet(req.body);
-  await pet.save();
-  res.json(pet);
+  // Only the known fields, validated: never pass req.body straight to the model.
+  const { name, type } = req.body || {};
+  const age = Number(req.body?.age); // the form sends it as a string
+  const text = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max;
+  if (!text(name, 50) || !text(type, 30) || !Number.isInteger(age) || age < 0 || age > 50) {
+    return res.status(400).json({ error: 'name (max 50), type (max 30) and age (0-50) are required' });
+  }
+  try {
+    const pet = await Pet.create({ name: name.trim(), type: type.trim(), age });
+    res.status(201).json(pet);
+  } catch (err) {
+    console.error('Error adding pet:', err);
+    res.status(500).json({ error: 'Failed to add pet' });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

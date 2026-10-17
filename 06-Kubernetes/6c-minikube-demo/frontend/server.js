@@ -8,6 +8,8 @@ app.use(express.json());
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 app.get('/api/pets', async (req, res) => {
   try {
     const response = await fetch(`${BACKEND_URL}/api/pets`);
@@ -27,7 +29,7 @@ app.post('/api/pets', async (req, res) => {
       body: JSON.stringify(req.body)
     });
     const data = await response.json();
-    res.json(data);
+    res.status(response.status).json(data);
   } catch (error) {
     console.error('Error adding pet:', error);
     res.status(500).json({ error: 'Failed to add pet' });
