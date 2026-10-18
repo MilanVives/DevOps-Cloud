@@ -170,7 +170,7 @@ opnieuw gebouwd.
 FROM node:22-alpine          ← cache
 WORKDIR /app                 ← cache
 COPY package*.json ./        ← cache (package.json niet gewijzigd)
-RUN npm ci --omit=dev        ← cache  ✅ geen nieuwe npm install!
+RUN npm ci --omit=dev        ← cache (geen nieuwe npm install)
 COPY . .                     ← opnieuw (server.js gewijzigd)
 CMD ["node", "server.js"]    ← opnieuw
 ```
@@ -178,11 +178,11 @@ CMD ["node", "server.js"]    ← opnieuw
 Met de **verkeerde volgorde** kopieer je eerst alle code: bij elke kleine codewijziging moet `npm install` opnieuw.
 
 ```dockerfile
-# ❌ traag: elke codewijziging = opnieuw alle dependencies installeren
+# Slecht (traag): elke codewijziging = opnieuw alle dependencies installeren
 COPY . .
 RUN npm install
 
-# ✅ snel: dependencies enkel opnieuw als package.json wijzigt
+# Goed (snel): dependencies enkel opnieuw als package.json wijzigt
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY . .

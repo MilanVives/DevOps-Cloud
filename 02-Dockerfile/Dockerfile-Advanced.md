@@ -50,11 +50,11 @@ docker rm website-builder
 ```
 
 **Problemen met deze aanpak:**
-- 🔥 **Niet reproduceerbaar**: Handmatige stappen kunnen vergeten worden
-- 🔥 **Geen documentatie**: Niemand weet wat er precies is gedaan
-- 🔥 **Foutgevoelig**: Menselijke fouten creëpen erin
-- 🔥 **Niet automatiseerbaar**: Geen deel van CI/CD pipeline
-- 🔥 **Geen versie controle**: Moeilijk om wijzigingen bij te houden
+- **Niet reproduceerbaar**: Handmatige stappen kunnen vergeten worden
+- **Geen documentatie**: Niemand weet wat er precies is gedaan
+- **Foutgevoelig**: Menselijke fouten sluipen erin
+- **Niet automatiseerbaar**: Geen deel van CI/CD pipeline
+- **Geen versie controle**: Moeilijk om wijzigingen bij te houden
 
 ---
 
@@ -75,9 +75,9 @@ CMD ["npm", "start"]
 ```
 
 **Problemen:**
-- 🔥 **Grote image size**: Development tools blijven in productie image
-- 🔥 **Security risico**: Onnodige tools en dependencies
-- 🔥 **Slow deployments**: Grote images betekenen langere push/pull tijden
+- **Grote image size**: Development tools blijven in productie image
+- **Security risico**: Onnodige tools en dependencies
+- **Slow deployments**: Grote images betekenen langere push/pull tijden
 
 ### Multi-stage build oplossing
 
@@ -191,9 +191,9 @@ docker images | grep my-app
 ```
 
 **Security voordelen:**
-- ✅ **Kleinere attack surface**: Geen development tools
-- ✅ **Fewer vulnerabilities**: Minder geïnstalleerde packages
-- ✅ **Clean runtime**: Alleen wat nodig is voor productie
+- **Kleinere attack surface**: Geen development tools
+- **Fewer vulnerabilities**: Minder geïnstalleerde packages
+- **Clean runtime**: Alleen wat nodig is voor productie
 
 ### Geavanceerde multi-stage technieken
 
@@ -416,7 +416,7 @@ jobs:
 
 ### Secrets management
 
-**❌ NEVER do this:**
+**Fout: doe dit nooit**
 ```dockerfile
 # SLECHT: Secrets in Dockerfile
 ENV DATABASE_PASSWORD=secret123
@@ -427,7 +427,7 @@ ARG DATABASE_PASSWORD
 ENV DATABASE_PASSWORD=$DATABASE_PASSWORD
 ```
 
-**✅ Proper secrets handling:**
+**Correct: secrets veilig gebruiken**
 ```dockerfile
 # Gebruik environment variabelen tijdens runtime
 ENV DATABASE_PASSWORD_FILE=/run/secrets/db_password
