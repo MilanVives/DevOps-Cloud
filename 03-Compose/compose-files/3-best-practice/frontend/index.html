@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foods</title>
+</head>
+<body>
+  <p>List of foods from API:</p>
+  <ul id="list"></ul>
+
+  <script>
+    // Relatieve URL: de browser vraagt /api/ aan de frontend (nginx), die stuurt door naar de backend.
+    async function createList() {
+      try {
+        const response = await fetch('/api/');
+        if (!response.ok) throw new Error(`Response status: ${response.status}`);
+        const foods = await response.json();
+        const ul = document.getElementById('list');
+        for (const food of foods) {
+          const li = document.createElement('li');
+          li.textContent = `${food.color} ${food.name}`;
+          ul.appendChild(li);
+        }
+      } catch (error) {
+        console.error(error.message);
+      }
+    }
+    createList();
+  </script>
+</body>
+</html>

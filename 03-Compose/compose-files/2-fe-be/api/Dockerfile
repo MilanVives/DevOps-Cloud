@@ -1,11 +1,12 @@
-FROM node
+FROM node:22-alpine
 WORKDIR /app
 
-COPY package*.json .
+# Eerst enkel package*.json: zolang die niet wijzigen, hergebruikt Docker de npm install-laag
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Daarna pas de code
 COPY . .
 
-RUN npm i
-
 EXPOSE 3000
-
-CMD node server.js
+CMD ["node", "server.js"]

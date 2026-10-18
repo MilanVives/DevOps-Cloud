@@ -50,8 +50,9 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ## [Les 2 – Dockerfile](02-Dockerfile/)
 
-- [Dockerfile Tutorial](02-Dockerfile/Dockerfile-Intro.md) - Van Docker run naar distribueerbare images
-- [Dockerfile Advanced](02-Dockerfile/Dockerfile-Advanced.md) - Geavanceerde Dockerfile technieken en optimalisaties
+- [Dockerfile Tutorial](02-Dockerfile/Dockerfile-Intro.md) - Je eigen image bouwen, layers en cache, delen via Docker Hub
+- [Dockerfile Cheatsheet](02-Dockerfile/Dockerfile-Cheatsheet.md) - Alle instructies met uitleg: eerst de meest gebruikte, dan de rest
+- [Dockerfile Advanced](02-Dockerfile/Dockerfile-Advanced.md) - Multi-stage builds, security, productie, CI/CD en minder gebruikte instructies
 - [Dockerfile Multiplatform](02-Dockerfile/Dockerfile-Multiplatform.md) - Multi-platform builds voor ARM en x86 architecturen
 - **Onderwerpen:**
   - Images bouwen met Dockerfile
@@ -67,8 +68,9 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ## [Les 3 – Docker Compose](03-Compose/)
 
-- [Van Docker run naar Compose](03-Compose/3-compose.md) - Multi-container orchestratie
-- [Compose bestanden](03-Compose/compose-files/) - Praktische voorbeelden
+- [Docker Compose](03-Compose/3-compose.md) - Meerdere containers met één bestand: services, netwerk, .env, healthchecks
+- [Compose Advanced](03-Compose/Compose-Advanced.md) - Netwerken onder de motorkap, override-bestanden, profiles, troubleshooting
+- [Compose bestanden](03-Compose/compose-files/) - Voorbeelden: `1-fe`, `2-fe-be`, `3-best-practice`
 - **Onderwerpen:**
   - Multi-container applicaties
   - YAML configuratie en service definitie

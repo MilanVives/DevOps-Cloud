@@ -1,53 +1,48 @@
+# Uitgebreidere versie van compose.yml: vaste containernamen, restart policy,
+# een eigen netwerk en een database met wachtwoord.
+# Starten: docker compose -f extended-compose.yml up -d --build
 services:
-  # MongoDB Service
   mongodb:
-    image: mongo:latest
+    image: mongo:7
     container_name: mongodbcontainer
-    ports:
-      - "27017:27017"   # Exposing MongoDB on localhost:27017
-    volumes:
-      - mongo_data:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
-    restart:
-      - always
+      MONGO_INITDB_ROOT_PASSWORD: example   # demo! In echte projecten: uit .env (zie 3-best-practice)
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+    restart: always
 
-  # Node.js Backend Service
   backend:
     build:
-      context: ./backend  # Path to the backend directory with Dockerfile
+      context: ./api          # map met de Dockerfile van de API
     container_name: backendcontainer
     ports:
-      - "3000:3000"       # Exposing backend on localhost:3000
+      - "3000:3000"
     environment:
       - MONGO_URI=mongodb://root:example@mongodb:27017/foodsdb?authSource=admin
     depends_on:
       - mongodb
     networks:
       - app-network
-    restart:
-      - always
+    restart: always
 
-  # HTML/JavaScript Frontend Service
   frontend:
     build:
-      context: ./frontend  # Path to the frontend directory with Dockerfile
+      context: ./frontend
     container_name: frontendcontainer
     ports:
-      - "8080:80"       # Exposing frontend on localhost:8080
+      - "8080:80"
     depends_on:
       - backend
     networks:
       - app-network
-    restart:
-      - always
+    restart: always
 
-# Named Volumes
 volumes:
   mongo_data:
 
-# Network
 networks:
   app-network:
     driver: bridge

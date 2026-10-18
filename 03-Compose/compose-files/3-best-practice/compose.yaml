@@ -1,0 +1,42 @@
+# "PE1-ready" versie van de foods-app:
+#  - enkel de frontend is bereikbaar vanaf je laptop (poort 8080)
+#  - de frontend (nginx) stuurt /api/ door naar de backend binnen het Docker-netwerk
+#  - wachtwoorden komen uit .env (niet in Git), voorbeeldwaarden staan in .env.example
+#  - healthchecks + depends_on: elke service wacht tot de vorige echt klaar is
+# Starten: cp .env.example .env && docker compose up -d --build --wait
+services:
+  mongodb:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - dbdata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      retries: 20
+
+  backend:
+    build: ./api
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://${DB_USER}:${DB_PASSWORD}@mongodb:27017/foodsdb?authSource=admin
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 5s
+      retries: 20
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  dbdata:

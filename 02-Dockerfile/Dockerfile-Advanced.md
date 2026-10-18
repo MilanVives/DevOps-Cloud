@@ -1,8 +1,672 @@
-# Geavanceerde Dockerfile Instructies
+# 2 - Dockerfile Advanced
 
-## Inleiding
+Verdieping bij de [Dockerfile-les](Dockerfile-Intro.md). Ken je de basis (FROM, COPY, RUN, CMD, build en push)?
+Dan vind je hier de technieken voor kleinere, veiligere en productieklare images.
+Een overzicht van alle instructies staat in de [Dockerfile cheatsheet](Dockerfile-Cheatsheet.md).
 
-Nu we de basis van Dockerfiles kennen, is het tijd om verder te gaan met meer geavanceerde instructies en technieken. Deze tutorial behandelt minder bekende maar zeer krachtige Dockerfile instructies die je helpen om meer efficiënte, veilige en geoptimaliseerde Docker images te bouwen.
+**Inhoud**
+
+- A. Van container naar image zonder Dockerfile (`docker commit`)
+- B. Multi-stage builds
+- C. Images kleiner maken en builds debuggen
+- D. Security best practices
+- E. Production-ready Dockerfile en CI/CD
+- 1–11. Meer instructies en technieken: ARG, ONBUILD, STOPSIGNAL, SHELL, HEALTHCHECK, LABEL,
+  geavanceerde multi-stage, `.dockerignore`, security, BuildKit, praktische voorbeelden
+
+---
+
+## A. Van container naar image zonder Dockerfile (`docker commit`)
+
+### Methode 1: Container modificatie en commit
+
+**Het oude handmatige proces:**
+
+```bash
+# Stap 1: Start een basis container
+docker run -it --name website-builder nginx:1.27-alpine sh
+
+# Stap 2: Ga in de container en maak wijzigingen
+# (In een nieuwe terminal)
+docker exec -it website-builder sh
+
+# Binnen de container:
+cd /usr/share/nginx/html
+rm index.html
+echo "<h1>Mijn website</h1><p>Versie 1.0</p>" > index.html
+exit
+
+# Stap 3: Stop de container
+docker stop website-builder
+
+# Stap 4: Commit de wijzigingen naar een nieuwe image
+docker commit website-builder mijn-website:v1.0
+
+# Stap 5: Test de nieuwe image
+docker run --rm -p 8080:80 mijn-website:v1.0
+
+# Stap 6: Cleanup
+docker rm website-builder
+```
+
+**Problemen met deze aanpak:**
+- 🔥 **Niet reproduceerbaar**: Handmatige stappen kunnen vergeten worden
+- 🔥 **Geen documentatie**: Niemand weet wat er precies is gedaan
+- 🔥 **Foutgevoelig**: Menselijke fouten creëpen erin
+- 🔥 **Niet automatiseerbaar**: Geen deel van CI/CD pipeline
+- 🔥 **Geen versie controle**: Moeilijk om wijzigingen bij te houden
+
+---
+
+## B. Multi-stage builds
+
+### Het probleem met grote development images
+
+**Traditionele build met development tools:**
+```dockerfile
+FROM node:18
+WORKDIR /app
+COPY package*.json ./
+RUN npm install              # Inclusief devDependencies
+COPY . .
+RUN npm run build           # Build tools blijven in image
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+**Problemen:**
+- 🔥 **Grote image size**: Development tools blijven in productie image
+- 🔥 **Security risico**: Onnodige tools en dependencies
+- 🔥 **Slow deployments**: Grote images betekenen langere push/pull tijden
+
+### Multi-stage build oplossing
+
+**Scheiding van build en runtime:**
+
+```dockerfile
+# Stage 1: Build stage
+FROM node:18 AS builder
+WORKDIR /app
+
+# Installeer alle dependencies (inclusief dev)
+COPY package*.json ./
+RUN npm ci
+
+# Kopieer source code en build
+COPY . .
+RUN npm run build
+
+# Stage 2: Production stage
+FROM node:18-alpine AS production
+WORKDIR /app
+
+# Installeer alleen productie dependencies
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Kopieer alleen de gebouwde bestanden uit build stage
+COPY --from=builder /app/dist ./dist
+
+# Security: non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+USER nodejs
+
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+```
+
+### Praktisch voorbeeld: React applicatie
+
+```dockerfile
+# Stage 1: Build React app
+FROM node:18 AS build
+WORKDIR /app
+
+# Dependencies installeren
+COPY package*.json ./
+RUN npm ci
+
+# Source code en build
+COPY . .
+RUN npm run build
+
+# Stage 2: Serve met nginx
+FROM nginx:1.27-alpine AS production
+
+# Kopieer build output naar nginx
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Custom nginx configuratie voor SPA
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+**Nginx configuratie voor SPA (nginx.conf):**
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    
+    server {
+        listen 80;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # SPA routing: alle requests naar index.html
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Caching voor static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+}
+```
+
+### Voordelen van multi-stage builds
+
+**Size vergelijking:**
+```bash
+# Single stage build
+docker build -t my-app:single-stage .
+# Image size: ~500MB (met development tools)
+
+# Multi-stage build
+docker build -t my-app:multi-stage --target production .
+# Image size: ~150MB (alleen runtime)
+
+# Size vergelijking
+docker images | grep my-app
+```
+
+**Security voordelen:**
+- ✅ **Kleinere attack surface**: Geen development tools
+- ✅ **Fewer vulnerabilities**: Minder geïnstalleerde packages
+- ✅ **Clean runtime**: Alleen wat nodig is voor productie
+
+### Geavanceerde multi-stage technieken
+
+**Verschillende targets voor verschillende omgevingen:**
+
+```dockerfile
+# Base stage
+FROM node:18 AS base
+WORKDIR /app
+COPY package*.json ./
+
+# Development stage
+FROM base AS development
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
+
+# Build stage
+FROM base AS build
+RUN npm ci
+COPY . .
+RUN npm run build
+RUN npm run test
+
+# Production stage
+FROM node:18-alpine AS production
+WORKDIR /app
+RUN npm ci --only=production
+COPY --from=build /app/dist ./dist
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+
+# Testing stage
+FROM build AS testing
+RUN npm run test:coverage
+CMD ["npm", "run", "test:watch"]
+```
+
+**Bouwen van specifieke stages:**
+```bash
+# Development image
+docker build --target development -t my-app:dev .
+
+# Production image  
+docker build --target production -t my-app:prod .
+
+# Testing image
+docker build --target testing -t my-app:test .
+```
+
+---
+
+---
+
+## C. Images kleiner maken en builds debuggen
+### Image grootte optimalisatie
+
+**Technieken voor kleinere images:**
+
+1. **Alpine Linux basis images:**
+```dockerfile
+# Groot: ~900MB
+FROM node:18
+
+# Klein: ~150MB  
+FROM node:18-alpine
+```
+
+2. **Multi-stage builds:**
+```dockerfile
+FROM node:18 AS builder
+# ... build steps
+
+FROM node:18-alpine AS production
+COPY --from=builder /app/dist ./dist
+```
+
+3. **Package cleanup:**
+```dockerfile
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        nginx \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+4. **Distroless images voor ultieme security:**
+```dockerfile
+FROM gcr.io/distroless/nodejs18-debian11
+COPY --from=builder /app/dist /app
+WORKDIR /app
+CMD ["server.js"]
+```
+
+### Build debugging
+
+**Inspecteer build stappen:**
+```bash
+# Bekijk build geschiedenis
+docker history my-app:latest
+
+# Debug build met intermediate containers
+docker build --no-cache .
+
+# Stop build bij specifieke stage voor debugging
+docker build --target development .
+docker run -it my-app:dev sh
+```
+
+**Troubleshooting veelvoorkomende problemen:**
+
+1. **"COPY failed: no such file or directory"**
+```bash
+# Check build context
+docker build --no-cache --progress=plain .
+
+# Verify .dockerignore
+cat .dockerignore
+```
+
+2. **"Package not found" errors:**
+```dockerfile
+# Update package index voor installaties
+RUN apt-get update && apt-get install -y package-name
+
+# Voor Alpine
+RUN apk update && apk add package-name
+```
+
+3. **Permission denied errors:**
+```dockerfile
+# Set correct ownership
+COPY --chown=user:group file destination
+
+# Or fix permissions
+RUN chown -R user:group /app
+```
+
+---
+
+---
+
+## D. Security best practices
+
+### Container security fundamentals
+
+**1. Non-root gebruikers:**
+```dockerfile
+# Maak dedicated user
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+# Switch naar non-root
+USER appuser
+
+# Voor Alpine
+RUN addgroup -g 1001 -S appgroup \
+    && adduser -S appuser -u 1001 -G appgroup
+
+# Voor Ubuntu/Debian
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+```
+
+**2. Minimale privileges:**
+```dockerfile
+# Alleen nodige capabilities
+FROM nginx:alpine
+RUN apk add --no-cache curl
+# Geen sudo, geen package managers in production image
+```
+
+**3. Read-only root filesystem:**
+```dockerfile
+# Maak writable directories
+RUN mkdir -p /app/tmp /app/logs \
+    && chown appuser:appgroup /app/tmp /app/logs
+
+USER appuser
+
+# Run met read-only root
+# docker run --read-only --tmpfs /app/tmp my-app
+```
+
+### Vulnerability scanning
+
+**Scan images voor kwetsbaarheden:**
+```bash
+# Docker Scout (built-in)
+docker scout quickview my-app:latest
+docker scout cves my-app:latest
+
+# Trivy scanner
+trivy image my-app:latest
+
+# Snyk scanner
+snyk container test my-app:latest
+```
+
+**Security in CI/CD:**
+```yaml
+# GitHub Actions voorbeeld
+name: Security Scan
+on: [push]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build image
+        run: docker build -t ${{ github.sha }} .
+      - name: Run Trivy scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+```
+
+### Secrets management
+
+**❌ NEVER do this:**
+```dockerfile
+# SLECHT: Secrets in Dockerfile
+ENV DATABASE_PASSWORD=secret123
+ENV API_KEY=abc123def456
+
+# SLECHT: Secrets in build args
+ARG DATABASE_PASSWORD
+ENV DATABASE_PASSWORD=$DATABASE_PASSWORD
+```
+
+**✅ Proper secrets handling:**
+```dockerfile
+# Gebruik environment variabelen tijdens runtime
+ENV DATABASE_PASSWORD_FILE=/run/secrets/db_password
+
+# Of verwijs naar secret management systeem
+ENV DATABASE_PASSWORD_FROM=vault:secret/db#password
+```
+
+**Runtime secrets:**
+```bash
+# Met Docker secrets (Swarm)
+echo "secret123" | docker secret create db_password -
+docker service create --secret db_password my-app
+
+# Met environment files
+docker run --env-file .env.production my-app
+
+# Met externe secret management
+docker run -e DATABASE_PASSWORD="$(vault kv get -field=password secret/db)" my-app
+```
+
+---
+
+---
+
+## E. Production-ready Dockerfile en CI/CD
+
+### Complete productie voorbeeld
+
+**Volledig geoptimaliseerde Dockerfile voor Node.js:**
+
+```dockerfile
+# Multi-stage build for Node.js application
+ARG NODE_VERSION=18
+ARG ALPINE_VERSION=3.18
+
+# Stage 1: Base with dependencies
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS base
+
+# Install security updates
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+        dumb-init \
+        curl \
+        tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
+# Stage 2: Dependencies installation
+FROM base AS deps
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev)
+RUN npm ci --include=dev && npm cache clean --force
+
+# Stage 3: Build application
+FROM deps AS build
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Build application
+RUN npm run build
+
+# Run tests
+RUN npm run test
+
+# Stage 4: Production runtime
+FROM base AS production
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Metadata
+LABEL maintainer="your-email@company.com"
+LABEL version="1.0.0"
+LABEL description="Production Node.js application"
+
+WORKDIR /app
+
+# Copy package files and install only production deps
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy built application from build stage
+COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
+
+# Create necessary directories with correct permissions
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Expose port
+EXPOSE ${PORT}
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/server.js"]
+```
+
+**.dockerignore voor productie:**
+```
+# Development files
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs (will be generated)
+dist
+build
+coverage
+.nyc_output
+
+# Environment files
+.env*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Testing
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+```
+
+### CI/CD integratie
+
+**GitHub Actions workflow:**
+```yaml
+name: Build and Deploy
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            COMMIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+---
+
+---
+
+# Meer instructies en technieken
 
 ## 1. ARG - Build-time Variabelen
 
