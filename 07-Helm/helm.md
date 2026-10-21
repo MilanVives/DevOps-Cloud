@@ -27,6 +27,7 @@ Secret. Dat werkt, maar:
 **Ook in dit hoofdstuk:**
 - [PetShelter naar Helm, stap voor stap](helm-petshelter.md): de manifests uit les 6 omzetten naar een chart (de basis
   voor de Final);
+- [Helm: alle commando's](helm-commands.md): naslag met alle commando's en opties;
 - [Helm Advanced](helm-advanced.md): helpers, hooks, tests, dependencies, charts publiceren, Helm in CI/CD.
 
 ---
@@ -208,9 +209,27 @@ kubectl get deploy                          # hallo (1/1) en dag (2/2): twee rel
 
 Omdat de namen uit `{{ .Release.Name }}` komen, botsen de twee releases niet.
 
-> **`helm create`?** Dat commando maakt een chart met veel voorbeeldbestanden (helpers, HPA, Ingress, ServiceAccount,
-> tests). Handig als naslag, maar te veel om mee te beginnen. Begin met een kleine chart zoals hierboven en voeg toe
-> wat je nodig hebt.
+### Een chart starten met `helm create`
+
+Je hoeft de map niet met de hand te maken:
+
+```bash
+helm create mijnchart
+```
+
+Dat maakt `Chart.yaml`, `values.yaml`, `.helmignore` en een map `templates/` met een volledige voorbeeldchart voor een
+nginx-webserver (Deployment, Service, Ingress, HPA, ServiceAccount, helpers, een test). Goed als naslag, maar voor je
+eigen app maak je hem meestal eerst leeg:
+
+```bash
+rm -rf mijnchart/templates/*
+: > mijnchart/values.yaml
+```
+
+Daarna kopieer je je bestaande YAML-bestanden in `templates/` (dat werkt meteen) en vervang je stap voor stap vaste
+waarden door `{{ .Values... }}`. Zo zet je in [PetShelter naar Helm](helm-petshelter.md) de app uit les 6 om.
+
+> `helm init` uit oude tutorials was Helm 2 en bestaat niet meer. Een chart maak je met `helm create`.
 
 ---
 
@@ -312,11 +331,13 @@ bestand wint) → `--set`.
 en CI/CD: hetzelfde commando werkt de eerste keer en elke keer daarna.
 
 > **Geen wachtwoorden in values-bestanden.** Die staan in git. Maak de Secret apart aan (`kubectl create secret`, of
-> vanuit je CI/CD) en verwijs ernaar vanuit de chart. Zie [PetShelter naar Helm](helm-petshelter.md#stap-2-de-secret-buiten-de-chart).
+> vanuit je CI/CD) en verwijs ernaar vanuit de chart. Zie [PetShelter naar Helm](helm-petshelter.md#stap-4-de-secret-buiten-de-chart).
 
 ---
 
 ## 7. Commando's
+
+De belangrijkste hieronder; **alle** commando's en opties staan in [Helm: alle commando's](helm-commands.md).
 
 | Commando | Wat |
 |---|---|

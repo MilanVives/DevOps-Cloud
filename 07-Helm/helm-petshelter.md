@@ -8,7 +8,8 @@ je in de Final doet.
 
 Lees eerst de [Helm-les](helm.md) (begrippen, templates, values).
 
-Het eindresultaat staat in [petshelter-chart/](petshelter-chart/). Probeer het eerst zelf en vergelijk daarna.
+Je vertrekt van een lege chart (`helm create`), kopieert de YAML uit les 6 en haalt er stap voor stap variabelen
+uit. Het eindresultaat staat in [petshelter-chart/](petshelter-chart/). Probeer het eerst zelf en vergelijk daarna.
 
 ```
 petshelter-chart/
@@ -31,13 +32,54 @@ Voer de commando's uit in de map `07-Helm` van de cursusrepository. Heb je de ap
 
 ---
 
-## Stap 1: de chart aanmaken
+## De aanpak
+
+1. Een lege chart maken met `helm create`.
+2. De YAML-bestanden uit les 6 **ongewijzigd** in `templates/` kopiëren: dat werkt meteen.
+3. Stap voor stap vaste waarden vervangen door `{{ .Values... }}` en ze in `values.yaml` zetten.
+4. Na elke stap controleren met `helm template` en `helm upgrade`.
+
+Zo heb je na elke stap een werkende chart, en zie je precies wat elke wijziging doet.
+
+---
+
+## Stap 1: een lege chart met `helm create`
 
 ```bash
-mkdir -p petshelter-chart/templates
+helm create petshelter-chart
 ```
 
-`petshelter-chart/Chart.yaml`:
+> In oude tutorials staat `helm init`: dat was Helm 2 (met Tiller) en bestaat niet meer. In Helm 3 en 4 maak je een
+> nieuwe chart met `helm create`.
+
+`helm create` maakt een volledige voorbeeldchart voor een nginx-webserver:
+
+```
+petshelter-chart/
+├── .helmignore              bestanden die niet in het pakket komen
+├── Chart.yaml
+├── values.yaml              98 regels voorbeeldinstellingen
+├── charts/
+└── templates/
+    ├── NOTES.txt
+    ├── _helpers.tpl
+    ├── deployment.yaml
+    ├── hpa.yaml
+    ├── ingress.yaml
+    ├── service.yaml
+    ├── serviceaccount.yaml
+    └── tests/test-connection.yaml
+```
+
+Die voorbeelden passen niet bij PetShelter. Bekijk ze gerust (vooral `_helpers.tpl` en `ingress.yaml` zijn leerrijk),
+maar maak de chart daarna leeg:
+
+```bash
+rm -rf petshelter-chart/templates/*
+: > petshelter-chart/values.yaml          # lege values.yaml (Windows: maak het bestand leeg in je editor)
+```
+
+Pas `petshelter-chart/Chart.yaml` aan (de commentaarregels mag je weglaten):
 
 ```yaml
 apiVersion: v2
@@ -50,32 +92,49 @@ appVersion: "1.0.0"
 
 ---
 
-## Stap 2: de Secret buiten de chart
-
-In les 6 stond het wachtwoord van de database in `mongodb-secret.yaml`, in git. Dat doen we niet meer: de Secret maak
-je **per omgeving** zelf aan, en de chart **verwijst** er enkel naar.
+## Stap 2: de YAML uit les 6 kopiëren
 
 ```bash
-kubectl create namespace test
-kubectl create secret generic db-credentials -n test \
-  --from-literal=DB_USER=admin \
-  --from-literal=DB_PASSWORD='kies-een-wachtwoord'
+cp ../06-Kubernetes/6c-minikube-demo/k8s/*.yaml petshelter-chart/templates/
+ls petshelter-chart/templates/
+# backend-deployment.yaml  frontend-deployment.yaml  mongodb-configmap.yaml
+# mongodb-deployment.yaml  mongodb-secret.yaml
 ```
 
-In de Final doe je hetzelfde, of laat je je CI/CD-pipeline de Secret aanmaken vanuit GitHub Secrets.
+Gewone Kubernetes-YAML **is** al een geldige template: er staat gewoon nog niets variabel in. Dit werkt dus meteen:
+
+```bash
+helm lint ./petshelter-chart
+helm template petshelter ./petshelter-chart          # exact de YAML uit les 6
+helm install petshelter ./petshelter-chart -n test --create-namespace
+kubectl get pods -n test                             # mongodb, backend, frontend: Running
+helm list -n test
+```
+
+Je app draait nu als Helm-release. Je hoeft je ook geen zorgen meer te maken over de volgorde: Helm installeert
+Secrets en ConfigMaps vóór de Deployments.
 
 ---
 
-## Stap 3: values.yaml ontwerpen
+## Stap 3: de eerste variabelen: images en replicas
 
-Kijk in de vijf bestanden uit les 6 welke waarden je per omgeving wil kunnen aanpassen: de images, het aantal
-replicas, de opslag, de hostnaam. Al de rest (poorten, namen) mag vast in de templates blijven staan.
+Kijk in de bestanden welke waarden je per omgeving wil kunnen aanpassen. Begin met de images en het aantal replicas.
 
-`petshelter-chart/values.yaml`:
+In `templates/backend-deployment.yaml`:
 
 ```yaml
-# Standaardwaarden. Per omgeving overschrijf je enkel wat verschilt (values-test.yaml, values-prod.yaml).
+spec:
+  replicas: 1                                            # voor
+  replicas: {{ .Values.replicas.backend }}               # na
+...
+        image: docker.io/dimilan/pet-shelter-backend:latest   # voor
+        image: {{ .Values.images.backend }}                   # na
+```
 
+Doe hetzelfde in `frontend-deployment.yaml` (`.Values.replicas.frontend`, `.Values.images.frontend`) en voor de image
+in `mongodb-deployment.yaml` (`.Values.images.database`). De waarden komen in `values.yaml`:
+
+```yaml
 images:
   frontend: dimilan/pet-shelter-frontend:latest
   backend: dimilan/pet-shelter-backend:latest
@@ -84,46 +143,84 @@ images:
 replicas:
   frontend: 1
   backend: 1
-
-# Naam van de Secret met DB_USER en DB_PASSWORD. Die maak je zelf aan met kubectl:
-# wachtwoorden horen niet in een values-bestand in git.
-dbSecret: db-credentials
-
-database:
-  storage: 1Gi
-
-ingress:
-  enabled: false
-  className: traefik
-  # Leeg = elke hostnaam (handig op Minikube).
-  host: ""
-  tls:
-    enabled: false
-    # Naam van een cert-manager ClusterIssuer, bv. "letsencrypt". Leeg = zelf een TLS-Secret aanmaken.
-    clusterIssuer: ""
 ```
+
+Controleren en uitrollen:
+
+```bash
+helm template petshelter ./petshelter-chart | grep -E "replicas|image:"
+helm upgrade petshelter ./petshelter-chart -n test --set replicas.frontend=3
+kubectl get deploy -n test           # frontend 3/3
+helm history petshelter -n test      # revision 1 en 2
+```
+
+Zo werk je verder: **één waarde tegelijk** naar `values.yaml`, telkens `helm template` om te controleren. Welke
+waarden? Alles wat per omgeving verschilt: images, replicas, opslag, hostnaam. Poorten en namen mogen vast in de
+templates blijven staan.
 
 > Gebruik je je eigen images (zoals in de PE's en de Final), vervang dan `dimilan/...` door je eigen Docker
 > Hub-images, met een vaste tag in plaats van `latest`.
 
 ---
 
-## Stap 4: de templates
+## Stap 4: de Secret buiten de chart
 
-Neem de YAML uit les 6 en vervang de vaste waarden door `{{ .Values.... }}`. We maken ook een paar dingen eenvoudiger:
+`mongodb-secret.yaml` bevat het wachtwoord van de database, en zou zo in git belanden. Haal het uit de chart: de Secret
+maak je **per omgeving** zelf aan, en de chart **verwijst** er enkel naar.
+
+```bash
+rm petshelter-chart/templates/mongodb-secret.yaml
+kubectl create secret generic db-credentials -n test \
+  --from-literal=DB_USER=admin \
+  --from-literal=DB_PASSWORD='kies-een-wachtwoord'
+```
+
+In de Deployments van MongoDB en de backend verwijs je naar die Secret, met de naam uit `values.yaml`:
+
+```yaml
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.dbSecret }}      # was: mongodb-secret
+                  key: DB_PASSWORD                  # was: password
+```
+
+```yaml
+# values.yaml
+dbSecret: db-credentials
+```
+
+In de Final doe je hetzelfde, of laat je je CI/CD-pipeline de Secret aanmaken vanuit GitHub Secrets.
+
+```bash
+helm upgrade petshelter ./petshelter-chart -n test
+kubectl get secret -n test       # db-credentials staat er; mongodb-secret heeft Helm zelf verwijderd
+```
+
+> MongoDB gebruikt het wachtwoord enkel bij de **eerste** start met een lege database. Zonder opslag (zoals in les 6)
+> start elke nieuwe MongoDB-pod leeg, dus het nieuwe wachtwoord werkt meteen. Zodra je opslag toevoegt (stap 5) en
+> later het wachtwoord wijzigt, moet je de PVC verwijderen (je verliest dan de data).
+
+---
+
+## Stap 5: opruimen en verbeteren
+
+Nu alles werkt, maak je de chart netter en klaar voor productie:
 
 | Les 6 | Chart | Waarom |
 |---|---|---|
 | 5 bestanden | 1 bestand per onderdeel (Deployment + Service samen, gescheiden door `---`) | overzichtelijker |
 | Services `mongodb-service`, `backend-service`, `frontend-service` | `database`, `backend`, `frontend` | korter; zo heten ze ook in de Final-template |
 | ConfigMap `mongodb-config` | weg: `MONGO_HOST: database` staat rechtstreeks in de backend | één waarde hoeft geen ConfigMap |
-| `mongodb-secret.yaml` met `username`/`password` | Secret `db-credentials` met `DB_USER`/`DB_PASSWORD`, buiten de chart | geen wachtwoorden in git |
+| `mongodb-secret.yaml` met `username`/`password` | Secret `db-credentials` met `DB_USER`/`DB_PASSWORD`, buiten de chart (stap 4) | geen wachtwoorden in git |
 | frontend als `NodePort` 32500 | `ClusterIP` (standaard) + Ingress | geen opengezette poorten |
 | geen opslag voor MongoDB | PersistentVolumeClaim | data overleeft een herstart van de pod |
 
 De namen van de objecten staan vast (`backend`, niet `{{ .Release.Name }}-backend`). Dat is eenvoudiger, en
 geen probleem zolang je **elke omgeving in een eigen namespace** zet. Twee releases van deze chart in dezelfde
 namespace kan wel niet.
+
+Hieronder staan de templates zoals ze er op het einde uitzien (ook in [petshelter-chart/templates/](petshelter-chart/templates/)).
+Bij `helm upgrade` verwijdert Helm zelf de objecten die niet meer in de chart staan, zoals de oude ConfigMap en Services.
 
 ### templates/backend.yaml
 
@@ -360,9 +457,43 @@ Openen (geen ingress):
 {{- end }}
 ```
 
+### values.yaml
+
+Alle variabelen samen:
+
+```yaml
+# Standaardwaarden. Per omgeving overschrijf je enkel wat verschilt (values-test.yaml, values-prod.yaml).
+
+images:
+  frontend: dimilan/pet-shelter-frontend:latest
+  backend: dimilan/pet-shelter-backend:latest
+  database: mongo:7
+
+replicas:
+  frontend: 1
+  backend: 1
+
+# Naam van de Secret met DB_USER en DB_PASSWORD. Die maak je zelf aan met kubectl:
+# wachtwoorden horen niet in een values-bestand in git.
+dbSecret: db-credentials
+
+database:
+  storage: 1Gi
+
+ingress:
+  enabled: false
+  className: traefik
+  # Leeg = elke hostnaam (handig op Minikube).
+  host: ""
+  tls:
+    enabled: false
+    # Naam van een cert-manager ClusterIssuer, bv. "letsencrypt". Leeg = zelf een TLS-Secret aanmaken.
+    clusterIssuer: ""
+```
+
 ---
 
-## Stap 5: controleren
+## Stap 6: controleren
 
 ```bash
 helm lint ./petshelter-chart
@@ -375,7 +506,7 @@ staat?
 
 ---
 
-## Stap 6: de testomgeving
+## Stap 7: de testomgeving
 
 `petshelter-chart/values-test.yaml`: enkel wat anders is dan de standaard.
 
@@ -404,7 +535,7 @@ curl http://petshelter-test.localhost/api/pets     # JSON met de dieren
 
 ---
 
-## Stap 7: de productieomgeving
+## Stap 8: de productieomgeving
 
 `petshelter-chart/values-prod.yaml`:
 
@@ -450,7 +581,7 @@ Dezelfde chart, twee omgevingen, en de verschillen staan in twee kleine bestande
 
 ---
 
-## Stap 8: updaten en terugdraaien
+## Stap 9: updaten en terugdraaien
 
 Een nieuwe versie van de backend uitrollen in test:
 

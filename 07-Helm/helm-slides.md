@@ -214,7 +214,27 @@ kubectl get deploy                    # hallo 1/1, dag 2/2
 
 Namen uit `{{ .Release.Name }}` → twee releases botsen niet
 
-`helm create` maakt veel voorbeeldbestanden: goed als naslag, te veel om mee te beginnen
+
+---
+
+## Starten met `helm create`
+
+<style scoped>section { font-size: 26px; } pre { font-size: 0.85em; }</style>
+
+```bash
+helm create petshelter-chart            # volledige voorbeeldchart (nginx)
+rm -rf petshelter-chart/templates/*     # leegmaken
+: > petshelter-chart/values.yaml
+
+cp ../06-Kubernetes/6c-minikube-demo/k8s/*.yaml petshelter-chart/templates/
+helm install petshelter ./petshelter-chart -n test --create-namespace
+```
+
+Gewone YAML **is** al een geldige template → werkt meteen
+
+Daarna: vaste waarden **één voor één** naar `values.yaml`, telkens `helm template`
+
+`helm init` = Helm 2, bestaat niet meer
 
 ---
 
@@ -335,6 +355,20 @@ helm list -A
 
 ---
 
+## De aanpak
+
+<style scoped>section { font-size: 28px; }</style>
+
+1. `helm create` en leegmaken
+2. YAML uit les 6 **ongewijzigd** naar `templates/` → `helm install`: werkt
+3. Images en replicas → `{{ .Values... }}` → `helm upgrade`
+4. Secret **uit** de chart, `kubectl create secret`
+5. Opruimen: bestanden samenvoegen, kortere namen, PVC, Ingress
+
+Na elke stap een **werkende** chart
+
+---
+
 ## Van les 6 naar een chart
 
 <style scoped>table { font-size: 22px; }</style>
@@ -441,6 +475,7 @@ helm get manifest petshelter -n test    # wat is er echt geïnstalleerd?
 ## Volgende stappen
 
 - [PetShelter naar Helm](helm-petshelter.md): de chart stap voor stap, test en prod
+- [Helm: alle commando's](helm-commands.md): naslag met alle commando's en opties
 - [Helm Advanced](helm-advanced.md): helpers, tests, dependencies, publiceren, CI/CD
 - **Ingress** (Les 8): één ingang met HTTPS, in je chart
 - **Final**: `helm/app/` met `values-test.yaml` en `values-prod.yaml` + `nodeinfo`
