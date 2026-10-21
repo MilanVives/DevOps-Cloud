@@ -1,5 +1,7 @@
 # 2 - Dockerfile Advanced
 
+<!-- {% raw %} -->
+
 Verdieping bij de [Dockerfile-les](Dockerfile-Intro.md). Ken je de basis (FROM, COPY, RUN, CMD, build en push)?
 Dan vind je hier de technieken voor kleinere, veiligere en productieklare images.
 Een overzicht van alle instructies staat in de [Dockerfile cheatsheet](Dockerfile-Cheatsheet.md).
@@ -1354,3 +1356,5 @@ Experimenteer met deze technieken in je eigen projecten en zie hoe ze je Docker 
 - [BuildKit Features](https://docs.docker.com/build/buildkit/)
 - [Multi-platform Builds](https://docs.docker.com/build/building/multi-platform/)
 - [Security Best Practices](https://docs.docker.com/develop/security/)
+
+<!-- {% endraw %} -->

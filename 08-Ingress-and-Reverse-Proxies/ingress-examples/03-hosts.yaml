@@ -1,0 +1,29 @@
+# Stap 3: routeren op hostnaam. Twee "websites" achter hetzelfde IP-adres.
+# Namen op .localhost wijzen in je browser en in curl altijd naar 127.0.0.1.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: petshelter
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: petshelter.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000
+    - host: whoami.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: whoami
+                port:
+                  number: 80

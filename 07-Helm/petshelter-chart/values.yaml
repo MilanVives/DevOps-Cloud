@@ -1,0 +1,27 @@
+# Standaardwaarden. Per omgeving overschrijf je enkel wat verschilt (values-test.yaml, values-prod.yaml).
+
+images:
+  frontend: dimilan/pet-shelter-frontend:latest
+  backend: dimilan/pet-shelter-backend:latest
+  database: mongo:7
+
+replicas:
+  frontend: 1
+  backend: 1
+
+# Naam van de Secret met DB_USER en DB_PASSWORD. Die maak je zelf aan met kubectl:
+# wachtwoorden horen niet in een values-bestand in git.
+dbSecret: db-credentials
+
+database:
+  storage: 1Gi
+
+ingress:
+  enabled: false
+  className: traefik
+  # Leeg = elke hostnaam (handig op Minikube).
+  host: ""
+  tls:
+    enabled: false
+    # Naam van een cert-manager ClusterIssuer, bv. "letsencrypt". Leeg = zelf een TLS-Secret aanmaken.
+    clusterIssuer: ""

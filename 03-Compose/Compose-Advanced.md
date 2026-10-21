@@ -1,5 +1,7 @@
 # 3 - Docker Compose Advanced
 
+<!-- {% raw %} -->
+
 Verdieping bij [Docker Compose](3-compose.md). Lees eerst die les: hier staan de onderwerpen die je niet nodig hebt
 om te starten, maar wel als je project groeit.
 
@@ -246,3 +248,5 @@ docker run --rm -v 2-fe-be_dbdata:/data -v "$PWD":/backup alpine \
 - Gebruik **named volumes** voor data die moet blijven.
 - Houd development-instellingen (bind mounts, extra poorten) in `compose.override.yaml`, niet in het basisbestand.
 - Test zoals een ander het zal doen: verse clone, `cp .env.example .env`, `docker compose up -d --wait`.
+
+<!-- {% endraw %} -->

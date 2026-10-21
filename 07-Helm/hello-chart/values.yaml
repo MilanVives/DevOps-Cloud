@@ -1,0 +1,6 @@
+replicas: 1
+image: traefik/whoami:v1.10
+
+# Environment variables voor de container. whoami toont WHOAMI_NAME in zijn antwoord.
+env:
+  WHOAMI_NAME: hallo

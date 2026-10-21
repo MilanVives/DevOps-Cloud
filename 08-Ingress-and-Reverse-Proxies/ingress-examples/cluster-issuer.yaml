@@ -1,0 +1,16 @@
+# Enkel in een echte cluster met een publiek domein (Final): cert-manager vraagt automatisch
+# een gratis Let's Encrypt-certificaat aan. Vervang het e-mailadres door het jouwe.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: jouw.naam@student.vives.be
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

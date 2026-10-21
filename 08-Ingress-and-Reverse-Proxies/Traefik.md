@@ -36,11 +36,11 @@ server {
 ```
 
 **Problemen:**
-- ❌ **Handmatige configuratie** voor elke nieuwe service
-- ❌ **Nginx reload** nodig bij wijzigingen
-- ❌ **Geen auto-discovery** van nieuwe services
-- ❌ **Complexe SSL-configuratie** per domein
-- ❌ **Statische configuratie** die niet mee-evolueert
+- **Handmatige configuratie** voor elke nieuwe service
+- **Nginx reload** nodig bij wijzigingen
+- **Geen auto-discovery** van nieuwe services
+- **Complexe SSL-configuratie** per domein
+- **Statische configuratie** die niet mee-evolueert
 
 ### Traefik: De moderne oplossing
 
@@ -52,11 +52,11 @@ server {
 - **Real-time dashboard** voor monitoring
 
 **Voordelen van Traefik:**
-- ✅ **Zero-downtime deployments**
-- ✅ **Automatische configuratie** via service labels
-- ✅ **HTTP/2 en gRPC support**
-- ✅ **Middleware systeem** voor authentication, rate limiting, etc.
-- ✅ **Multi-provider support** (Docker, Kubernetes, Consul, etc.)
+- **Zero-downtime deployments**
+- **Automatische configuratie** via service labels
+- **HTTP/2 en gRPC support**
+- **Middleware systeem** voor authentication, rate limiting, etc.
+- **Multi-provider support** (Docker, Kubernetes, Consul, etc.)
 
 ## Traefik Architectuur
 
@@ -154,7 +154,7 @@ global:
 # API en Dashboard (alleen voor development!)
 api:
   dashboard: true
-  insecure: true  # ⚠️  Alleen voor development
+  insecure: true  # Alleen voor development
 
 # Entrypoints
 entryPoints:
@@ -757,32 +757,32 @@ tar -czf /backup/traefik-config-$(date +%Y%m%d).tar.gz \
 
 | Feature | Traefik | Nginx |
 |---------|---------|--------|
-| Auto-discovery | ✅ Automatisch | ❌ Handmatig |
-| Dynamic config | ✅ Real-time | ❌ Reload nodig |
-| SSL automation | ✅ Let's Encrypt | ⚠️ Externe tools |
-| Dashboard | ✅ Built-in | ❌ Externe tools |
-| Performance | ⚠️ Goed | ✅ Excellent |
-| Learning curve | ✅ Makkelijk | ⚠️ Complex |
+| Auto-discovery | Automatisch | Handmatig |
+| Dynamic config | Real-time | Reload nodig |
+| SSL automation | Let's Encrypt | Externe tools |
+| Dashboard | Built-in | Externe tools |
+| Performance | Goed | Excellent |
+| Learning curve | Makkelijk | Complex |
 
 ### Traefik vs. HAProxy
 
 | Feature | Traefik | HAProxy |
 |---------|---------|---------|
-| Cloud-native | ✅ Yes | ⚠️ Needs tools |
-| Load balancing | ✅ Good | ✅ Excellent |
-| SSL termination | ✅ Excellent | ✅ Good |
-| Configuration | ✅ Labels/annotations | ❌ Config files |
-| Monitoring | ✅ Built-in | ⚠️ External |
+| Cloud-native | Yes | Needs tools |
+| Load balancing | Good | Excellent |
+| SSL termination | Excellent | Good |
+| Configuration | Labels/annotations | Config files |
+| Monitoring | Built-in | External |
 
 ### Traefik vs. Envoy
 
 | Feature | Traefik | Envoy |
 |---------|---------|--------|
-| Ease of use | ✅ Simple | ❌ Complex |
-| Service mesh | ⚠️ Basic | ✅ Advanced |
-| Performance | ✅ Good | ✅ Excellent |
-| Observability | ✅ Good | ✅ Excellent |
-| Configuration | ✅ Declarative | ⚠️ Complex |
+| Ease of use | Simple | Complex |
+| Service mesh | Basic | Advanced |
+| Performance | Good | Excellent |
+| Observability | Good | Excellent |
+| Configuration | Declarative | Complex |
 
 ## Hands-on Oefeningen
 
@@ -828,11 +828,11 @@ tar -czf /backup/traefik-config-$(date +%Y%m%d).tar.gz \
 Traefik biedt een moderne, cloud-native oplossing voor reverse proxy en load balancing met:
 
 **Belangrijkste voordelen:**
-- ✅ **Automatische service discovery** vermindert handmatig beheer
-- ✅ **Dynamic configuration** zonder downtime
-- ✅ **Built-in SSL automation** met Let's Encrypt
-- ✅ **Middleware ecosystem** voor uitbreidbare functionaliteit
-- ✅ **Excellent observability** met dashboard en metrics
+- **Automatische service discovery** vermindert handmatig beheer
+- **Dynamic configuration** zonder downtime
+- **Built-in SSL automation** met Let's Encrypt
+- **Middleware ecosystem** voor uitbreidbare functionaliteit
+- **Excellent observability** met dashboard en metrics
 
 **Wanneer Traefik gebruiken:**
 - Docker/Container omgevingen

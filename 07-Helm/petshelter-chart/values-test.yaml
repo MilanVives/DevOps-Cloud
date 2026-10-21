@@ -1,0 +1,4 @@
+# Testomgeving: klein, zonder HTTPS.
+ingress:
+  enabled: true
+  host: petshelter-test.localhost

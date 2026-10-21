@@ -1,0 +1,14 @@
+PetShelter is geïnstalleerd als release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Status bekijken:
+  kubectl get pods -n {{ .Release.Namespace }}
+{{- if .Values.ingress.enabled }}
+
+Openen:
+  http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host | default "localhost" }}/
+{{- else }}
+
+Openen (geen ingress):
+  kubectl port-forward -n {{ .Release.Namespace }} svc/frontend 3000:3000
+  en surf naar http://localhost:3000
+{{- end }}

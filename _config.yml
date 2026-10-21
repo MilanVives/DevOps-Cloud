@@ -1,9 +1,9 @@
 # Jekyll configuration for GitHub Pages
 theme: jekyll-theme-primer
 
-# Exclude files that contain Helm template syntax that conflicts with Liquid
+# Pagina's met {{ }} (Helm, GitHub Actions, docker --format) staan tussen <!-- {% raw %} --> en
+# <!-- {% endraw %} -->, zodat Liquid ze ongemoeid laat.
 exclude:
-  - 07-Helm/
   - vendor
   - .bundle
   - Gemfile

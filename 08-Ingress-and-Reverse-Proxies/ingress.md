@@ -1,1634 +1,468 @@
-# 8 - Ingress & Reverse Proxies: External Access naar Kubernetes
+# 8 - Ingress: al je apps bereikbaar via één ingang
 
-## Inleiding: Het External Access Probleem
+## Waar gaat deze les over?
 
-**Het probleem:**
-In Kubernetes draaien je applicaties in een cluster, maar hoe krijg je externe toegang tot je services?
+Je PetShelter-app draait in Kubernetes. Om ze vanuit je browser te openen, gebruikte je tot nu toe een
+**NodePort** (`http://<minikube-ip>:32500`) of `kubectl port-forward`. Dat is prima om te testen, maar zo werkt geen
+echte website:
 
-### Wat is Kubernetes Ingress?
+- niemand typt een poortnummer zoals `:32500` in de adresbalk;
+- elke app krijgt een eigen poort, dus 10 apps = 10 poorten om te onthouden en open te zetten;
+- er is geen HTTPS en geen domeinnaam.
 
-**Literal meaning**: Ingress verwijst naar het binnenkomen. In de Kubernetes wereld betekent ingress het verkeer dat de cluster binnenkomt, en egress is het verkeer dat de cluster verlaat.
+Een echte website is bereikbaar op **poort 80 (HTTP) en 443 (HTTPS)**, met een **domeinnaam**, en vaak draaien er
+meerdere apps achter hetzelfde adres (`/` is de website, `/api` de backend). Dat regel je in Kubernetes met een
+**Ingress**.
 
-**Ingress** is een native Kubernetes resource (zoals pods, deployments, etc.) waarmee je **DNS routing configuraties** kunt onderhouden. De ingress controller doet de daadwerkelijke routing door de routing regels te lezen uit de ingress objecten opgeslagen in etcd.
+**Na deze les kan je:**
+- uitleggen wat een Ingress en een Ingress controller zijn, en waarom je ze allebei nodig hebt;
+- Traefik installeren als Ingress controller op Minikube;
+- verkeer routeren op **pad** (`/api`) en op **hostnaam** (`api.mijnsite.be`);
+- HTTPS instellen, lokaal met een eigen certificaat en in de cloud met Let's Encrypt;
+- de meest voorkomende Ingress-fouten zelf oplossen.
 
-### Service Types Limitations
+**Ook in dit hoofdstuk:**
+- [Ingress Advanced](ingress-advanced.md): hoe een controller intern werkt, cert-manager in detail, Traefik-middlewares
+  (login, rate limiting), Gateway API, productie-checklist;
+- [Traefik](Traefik.md) en [Nginx](Nginx.md): dezelfde ideeën (reverse proxy) **buiten** Kubernetes, met Docker Compose.
 
-**Voor Ingress: Wat waren de problemen?**
-
-```yaml
-# ClusterIP - alleen intern bereikbaar
-apiVersion: v1
-kind: Service
-metadata:
-  name: webapp
-spec:
-  type: ClusterIP  # ❌ Geen externe toegang
-  ports:
-  - port: 80
-```
-
-```yaml
-# NodePort - elk pod heeft andere poort
-apiVersion: v1
-kind: Service
-metadata:
-  name: webapp
-spec:
-  type: NodePort  # ❌ Random ports, niet schaalbaar
-  ports:
-  - port: 80
-    nodePort: 30080  # Poort op elke node
-```
-
-```yaml
-# LoadBalancer - duur per service
-apiVersion: v1
-kind: Service
-metadata:
-  name: webapp
-spec:
-  type: LoadBalancer  # ❌ Één load balancer per service = kostbaar
-  ports:
-  - port: 80
-```
-
-**Zonder Kubernetes Ingress:**
-
-Zonder ingress zou je voor elke applicatie een **Service Type LoadBalancer** moeten toevoegen aan de deployments. Hier is hoe dat eruitziet:
-
-![Kubernetes zonder Ingress](../images/ingress/kubernetes-ingress-without-controller.png)
-
-**Met Ingress:**
-
-Met ingress is er een **reverse proxy layer** (Ingress controller implementatie) tussen de load balancer en de Kubernetes service endpoints.
-
-**De oplossing: Ingress**
-- ✅ **Eén entry point** voor alle services
-- ✅ **Path-based routing**: verschillende URLs naar verschillende services
-- ✅ **Host-based routing**: verschillende domeinen naar verschillende services
-- ✅ **SSL/TLS termination**: HTTPS afhandeling op één plek
-- ✅ **Cost effective**: Eén load balancer voor alles
+Alle YAML-bestanden van deze les staan in [ingress-examples/](ingress-examples/). Voer de commando's uit in de map
+`08-Ingress-and-Reverse-Proxies` van de cursusrepository (`git clone https://github.com/MilanVives/DevOps-Cloud.git`).
 
 ---
 
-## Voor Kubernetes Ingress: De Geschiedenis
+## 1. Het idee: het onthaal van een gebouw
 
-### Custom Nginx/HAProxy Implementaties
+Denk aan een groot kantoorgebouw met veel bedrijven. Er is **één ingang**. Aan het onthaal hangt een **lijst**: "Firma A:
+3de verdieping, firma B: 5de verdieping". De **onthaalmedewerker** kijkt naar wie je zoekt en stuurt je naar de juiste
+plek.
 
-Voor Kubernetes Ingress stabiel was, werd een **custom Nginx of HAProxy** Kubernetes deployment gebruikt die werd exposed als een LoadBalancer service om externe traffic naar interne cluster services te routen.
+| In het gebouw | In Kubernetes |
+|---|---|
+| de ene ingang | één IP-adres op poort 80/443 |
+| de lijst aan het onthaal | de **Ingress**: een YAML-bestand met regels ("`/api` → backend") |
+| de onthaalmedewerker die de lijst toepast | de **Ingress controller**: een programma (bij ons **Traefik**) dat de regels uitvoert |
+| de kantoren | je **Services** (en daarachter je pods) |
 
-**Hoe werkte het toen?**
-- Routing regels werden toegevoegd als een **ConfigMap** in de Nginx/HAProxy pods
-- Bij een DNS wijziging of nieuwe route entry werd de ConfigMap geüpdatet
-- Pod configs werden gereload of opnieuw deployed
+Het belangrijkste om te onthouden:
 
-**Kubernetes Ingress verbeterde dit:**
-- Routing regels als **native Kubernetes ingress objects** in plaats van ConfigMaps
-- In plaats van Nginx/HAProxy: **Ingress controllers** (aangepaste versies van Nginx/HAProxy) die routing regels dynamisch ophalen
-- Implementaties met **Consul** en andere service discovery tools om DNS wijzigingen te updaten zonder downtime
+> **Een Ingress zonder Ingress controller doet niets.** Het is een lijst zonder onthaalmedewerker. Kubernetes heeft
+> standaard **geen** controller: die installeer je zelf.
 
-**OpenShift Router:**
-In OpenShift maakte het router concept (HAProxy implementations) het eenvoudig om service endpoints buiten de cluster te exposen. Dit is vergelijkbaar met Kubernetes ingress.
+![Ingress (regels) en Ingress controller (de routing)](../images/ingress/kubernetes-ingress-without-controller.png)
+
+### Zo loopt een request
+
+```
+browser: http://petshelter.localhost/api/pets
+   │
+   ▼
+Ingress controller (Traefik)  ← leest alle Ingress-regels in de cluster
+   │   regel: host petshelter.localhost, pad /api  →  Service backend-service:5000
+   ▼
+Service backend-service       ← verdeelt over de pods
+   │
+   ▼
+pod backend (een van de replicas)
+```
+
+### Vergelijking met de Service-types die je al kent
+
+| | Wat | Van buiten bereikbaar? | Typisch gebruik |
+|---|---|---|---|
+| `ClusterIP` | intern IP-adres in de cluster | nee | database, backend, alles achter een Ingress |
+| `NodePort` | een poort 30000–32767 op elke node | ja, op een rare poort | snel testen |
+| `LoadBalancer` | een extern IP-adres van de cloudprovider | ja | **één keer**: voor de Ingress controller |
+| **Ingress** | regels op poort 80/443, op host en pad | ja | **al je webapps** achter één IP-adres |
+
+In de cloud kost elk `LoadBalancer`-IP geld. Met een Ingress heb je er maar **één** nodig (voor Traefik), en zet je
+daar al je apps achter. Je apps zelf blijven gewone `ClusterIP`-Services.
 
 ---
 
-## Hoe Werkt Kubernetes Ingress?
+## 2. Traefik installeren op Minikube
 
-### Twee Sleutelconcepten
-
-Als beginner moet je **twee belangrijke concepten** begrijpen:
-
-#### 1. Kubernetes Ingress Resource
-
-**Kubernetes Ingress Resource** is verantwoordelijk voor het opslaan van DNS routing regels in de cluster.
-
-#### 2. Kubernetes Ingress Controller  
-
-**Kubernetes Ingress Controller** (Nginx/HAProxy etc.) is verantwoordelijk voor de routing door toegang te krijgen tot de DNS regels toegepast via ingress resources.
-
-**Belangrijk te begrijpen:**
-- Een ingress object vereist een ingress controller voor het routen van traffic
-- **Externe traffic raakt NIET de ingress API**, maar raakt het ingress controller service endpoint dat direct is geconfigureerd met een load balancer
-
----
-
-## Ingress Resource
-
-### Wat is een Ingress Resource?
-
-De **Kubernetes Ingress Resource** is een native kubernetes resource waar je de DNS routing regels specificeert. Dit betekent dat je externe DNS traffic mapt naar interne Kubernetes service endpoints.
-
-### Basic Ingress Resource Voorbeeld
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: test-ingress
-  namespace: dev
-spec:
-  rules:
-  - host: test.apps.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: hello-service
-            port:
-              number: 80
-```
-
-**Wat betekent dit?**
-- Alle calls naar `test.apps.example.com` moeten naar de service `hello-service` in de dev namespace gaan
-- Het bevat alleen routing regels
-- Je kan meerdere routing endpoints toevoegen voor path-based routing
-- Je kan TLS configuratie toevoegen
-
-**Key Points:**
-- Een ingress object vereist een ingress controller voor het routen van traffic
-- Externe traffic raakt NIET de ingress API, maar het ingress controller service endpoint
-
----
-
-## Ingress Controller
-
-### Wat is een Ingress Controller?
-
-**Belangrijk**: Ingress controller is **NIET een native Kubernetes implementatie**. Dit betekent dat het niet standaard in de cluster zit.
-
-We moeten een ingress controller opzetten voordat ingress regels werken. Er zijn verschillende open-source en enterprise ingress controllers beschikbaar.
-
-Een ingress controller is typisch een **reverse web proxy server implementatie** in de cluster. In Kubernetes termen is het een reverse proxy server deployed als **Kubernetes deployment** exposed naar een service type LoadBalancer.
-
-**Multiple Ingress Controllers:**
-Je kan meerdere ingress controllers in een cluster hebben, elk gemapt naar meerdere load balancers. Elke ingress controller moet een unieke identifier hebben genaamd **ingress-class** toegevoegd aan de annotation.
-
-### Populaire Ingress Controllers
-
-- **NGINX Ingress Controller** (meest gebruikt)
-  - Community versie: https://github.com/kubernetes/ingress-nginx
-  - Nginx Inc versie: https://github.com/nginxinc/kubernetes-ingress
-- **Traefik** (modern, auto-discovery)
-- **HAProxy Ingress**
-- **Contour**
-- **Istio Gateway**
-- **GKE Ingress Controller** (voor GKE)
-- **AWS ALB Ingress Controller** (voor AKS)
-- **Azure Application Gateway Ingress Controller**
-
-**Comparison Document:**
-Learnk8s heeft een geweldige vergelijking gemaakt van alle beschikbare ingress controllers:
-https://docs.google.com/spreadsheets/d/191WWNpjJ2za6-nbG4ZoUMXMpUK8KlCIosvQB0f-oq3k/edit#gid=907731238
-
----
-
-## Hoe Werkt een Ingress Controller?
-
-### Nginx Ingress Controller Voorbeeld
-
-Nginx is één van de meest gebruikte ingress controllers. Laten we kijken naar hoe het werkt:
-
-![Nginx Controller Workflow](../images/ingress/nginx-controller-workflow.png)
-
-**Workflow stappen:**
-
-1. **Lua Template Configuration:**
-   - Het `nginx.conf` bestand in de Nginx controller pod is een **lua template** die kan praten met de Kubernetes Ingress API
-   - Het haalt real-time de laatste waarden op voor traffic routing
-   - Template file: https://github.com/kubernetes/ingress-nginx/blob/main/rootfs/etc/nginx/template/nginx.tmpl
-
-2. **API Communication:**
-   - De Nginx controller praat met Kubernetes Ingress API om te checken of er routing regels zijn gecreëerd
-
-3. **Configuration Generation:**
-   - Als het ingress regels vindt, genereert de Nginx controller een routing configuratie in `/etc/nginx/conf.d` locatie in elke nginx pod
-
-4. **Per Ingress Resource:**
-   - Voor elke ingress resource die je creëert, genereert Nginx een configuratie in `/etc/nginx/conf.d`
-
-5. **Main Configuration:**
-   - Het hoofd `/etc/nginx/nginx.conf` bestand bevat alle configuraties van `etc/nginx/conf.d`
-
-6. **Dynamic Updates:**
-   - Als je het ingress object update met nieuwe configuraties, wordt de Nginx config opnieuw geüpdatet
-   - Er gebeurt een **graceful reload** van de configuratie
-
-**Verificatie:**
-Als je connect naar de Nginx ingress controller pod met `kubectl exec` en het `/etc/nginx/nginx.conf` bestand checkt, zie je alle regels gespecificeerd in het ingress object toegepast in het conf bestand.
-
----
-
-## Ingress & Ingress Controller Architecture
-
-### Complete Architectuur Diagram
-
-Hier is het architectuur diagram dat de ingress & ingress controller setup op een Kubernetes cluster uitlegt:
-
-![Ingress Architecture](../images/ingress/ingress-architecture.png)
-
-Het toont ingress regels die traffic routen naar twee applicaties: `payment` en `auth`.
-
-**Architectuur componenten:**
-
-1. **External Load Balancer:**
-   - Ontvangt al het externe verkeer
-   - Routeert naar de Ingress Controller
-
-2. **Ingress Controller (Nginx/Traefik/HAProxy):**
-   - Deployed als een Kubernetes Deployment
-   - Exposed via LoadBalancer Service
-   - Leest Ingress Resources via Kubernetes API
-
-3. **Ingress Resources:**
-   - Opgeslagen in etcd
-   - Bevatten routing regels
-   - Specificeren host en path-based routing
-
-4. **Backend Services:**
-   - ClusterIP Services voor interne communicatie
-   - Payment Service → Payment Pods
-   - Auth Service → Auth Pods
-
-5. **Pods:**
-   - Draaien de daadwerkelijke applicaties
-   - Worden bereikt via Services
-
-**Traffic Flow:**
-```
-External User 
-  → DNS Resolution (example.com)
-  → Load Balancer 
-  → Ingress Controller
-  → Reads Ingress Rules
-  → Routes to Service (payment-service or auth-service)
-  → Service routes to Pods
-  → Application responds
-```
-
----
-
-## Ingress Routing Patterns
-
-### Host-based Routing
-
-Route naar verschillende services gebaseerd op hostname:
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: multi-host-ingress
-spec:
-  rules:
-  - host: webapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
-  - host: api.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: api-service
-            port:
-              number: 3000
-```
-
-**Use case:**
-- `webapp.example.com` → frontend applicatie
-- `api.example.com` → backend API
-- Verschillende domeinen voor verschillende services
-
-### Path-based Routing
-
-Route naar verschillende services gebaseerd op URL path:
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: path-based-ingress
-spec:
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 80
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: backend-service
-            port:
-              number: 5000
-      - path: /admin
-        pathType: Prefix
-        backend:
-          service:
-            name: admin-service
-            port:
-              number: 3000
-```
-
-**Use case:**
-- `myapp.example.com/` → frontend
-- `myapp.example.com/api` → backend API
-- `myapp.example.com/admin` → admin interface
-
-### PathType Options
-
-**Prefix:**
-```yaml
-pathType: Prefix
-path: /api
-# Matches: /api, /api/, /api/v1, /api/users, etc.
-```
-
-**Exact:**
-```yaml
-pathType: Exact
-path: /api
-# Matches only: /api
-# Does NOT match: /api/, /api/v1
-```
-
-**ImplementationSpecific:**
-```yaml
-pathType: ImplementationSpecific
-# Depends on IngressClass implementation
-```
-
----
-
-## SSL/TLS Configuration
-
-### TLS Termination met Ingress
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: webapp-tls
-  namespace: default
-type: kubernetes.io/tls
-data:
-  tls.crt: LS0tLS1CRUdJTi... # Base64 encoded certificate
-  tls.key: LS0tLS1CRUdJTi... # Base64 encoded private key
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress-tls
-spec:
-  tls:
-  - hosts:
-    - myapp.example.com
-    secretName: webapp-tls
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
-```
-
-### Cert-Manager voor Automatische Certificates
+We gebruiken **Traefik** als Ingress controller: dezelfde als in de Final, en je installeert hem met Helm
+([les 7](../07-Helm/helm.md)).
 
 ```bash
-# Install cert-manager
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+minikube start
 
-# Create ClusterIssuer for Let's Encrypt
-```
-
-```yaml
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt-prod
-spec:
-  acme:
-    email: admin@example.com
-    server: https://acme-v02.api.letsencrypt.org/directory
-    privateKeySecretRef:
-      name: letsencrypt-prod-key
-    solvers:
-    - http01:
-        ingress:
-          class: nginx
-```
-
-**Ingress met automatische certificate:**
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  tls:
-  - hosts:
-    - myapp.example.com
-    secretName: webapp-tls-auto  # Automatically created by cert-manager
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
-```
-
----
-
-## NGINX Ingress Controller Setup
-
-### Installation Methods
-
-#### Method 1: Using kubectl (Manifest-based)
-
-```bash
-# Apply the NGINX Ingress Controller manifests
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.0/deploy/static/provider/cloud/deploy.yaml
-
-# Verify installation
-kubectl get pods -n ingress-nginx
-kubectl get svc -n ingress-nginx
-```
-
-#### Method 2: Using Helm
-
-```bash
-# Add the NGINX Ingress Helm repository
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo add traefik https://traefik.github.io/charts
 helm repo update
-
-# Install NGINX Ingress Controller
-helm install nginx-ingress ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx \
-  --create-namespace \
-  --set controller.service.type=LoadBalancer
-
-# Verify installation
-helm list -n ingress-nginx
-kubectl get pods -n ingress-nginx -w
+helm install traefik traefik/traefik -n traefik --create-namespace
 ```
 
-#### For Minikube
+Controleren:
 
 ```bash
-# Enable ingress addon (easiest for local development)
-minikube addons enable ingress
-
-# Verify
-kubectl get pods -n ingress-nginx
+kubectl get pods -n traefik         # traefik-xxxx   1/1   Running
+kubectl get ingressclass            # traefik   traefik.io/ingress-controller
+kubectl get svc -n traefik          # traefik   LoadBalancer   ...   EXTERNAL-IP <pending>
 ```
 
-### Verify Installation
+De **IngressClass** `traefik` is de naam waarmee je in je Ingress zegt: "deze regels zijn voor Traefik".
+
+### `EXTERNAL-IP <pending>`: `minikube tunnel`
+
+Traefik vraagt een `LoadBalancer`-Service aan. In de cloud krijg je daar een publiek IP-adres voor. Minikube heeft dat
+niet, en daarom blijft het `<pending>`. Los dat op met een tunnel, in een **apart terminalvenster** dat je open laat:
 
 ```bash
-# Check if ingress controller is running
-kubectl get pods -n ingress-nginx
-
-# Expected output:
-# NAME                                        READY   STATUS    RESTARTS   AGE
-# ingress-nginx-controller-xxxxx              1/1     Running   0          2m
-
-# Check service
-kubectl get svc -n ingress-nginx
-
-# Expected output:
-# NAME                                 TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)
-# ingress-nginx-controller             LoadBalancer   10.96.xxx.xxx   <pending>     80:xxxxx/TCP,443:xxxxx/TCP
+minikube tunnel        # vraagt je wachtwoord: poort 80 en 443 openen vereist admin-rechten
 ```
+
+```bash
+kubectl get svc -n traefik          # EXTERNAL-IP 127.0.0.1
+```
+
+Traefik luistert nu op `http://localhost` (poort 80) en `https://localhost` (poort 443).
+
+> **Werkt de tunnel niet?** Dan kan het altijd zo, zonder admin-rechten:
+> `kubectl port-forward -n traefik svc/traefik 8080:80 8443:443`. Gebruik dan in de rest van de les
+> `http://...:8080` en `https://...:8443`.
+>
+> **Linux:** zie je bij `EXTERNAL-IP` een ander adres dan `127.0.0.1`, gebruik dan dat adres in plaats van
+> `localhost`, en zet hostnamen in `/etc/hosts` (zie sectie 5).
+
+> **Wat met `minikube addons enable ingress`?** Die installeert de controller **ingress-nginx** in plaats van Traefik.
+> Die werkt ook, maar het project wordt sinds maart 2026 niet meer onderhouden. Kies je hem toch, gebruik dan
+> `ingressClassName: nginx` in je Ingress.
 
 ---
 
-## Praktisch Voorbeeld: Complete Setup
+## 3. De app deployen
 
-### Scenario: PetShelter Applicatie met Ingress
+We gebruiken de PetShelter-app uit [les 6](../06-Kubernetes/6c-minikube-demo/) en een tweede, piepkleine app
+**whoami** die antwoordt met de naam van de pod die je request beantwoordt.
 
-Laten we een complete ingress setup maken voor de PetShelter applicatie.
-
-**Stap 1: Deploy de applicatie**
-
-```yaml
-# mongodb-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mongodb
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mongodb
-  template:
-    metadata:
-      labels:
-        app: mongodb
-    spec:
-      containers:
-      - name: mongodb
-        image: mongo:7
-        ports:
-        - containerPort: 27017
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mongodb-service
-spec:
-  selector:
-    app: mongodb
-  ports:
-  - port: 27017
-    targetPort: 27017
+```bash
+kubectl apply -f ../06-Kubernetes/6c-minikube-demo/k8s/
+kubectl apply -f ingress-examples/whoami.yaml
+kubectl get pods                    # wacht tot alles Running is
+kubectl get svc                     # frontend-service:3000, backend-service:5000, whoami:80
 ```
 
-```yaml
-# backend-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: backend
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: backend
-  template:
-    metadata:
-      labels:
-        app: backend
-    spec:
-      containers:
-      - name: backend
-        image: dimilan/pet-shelter-backend:latest
-        ports:
-        - containerPort: 5000
+Noteer de **namen en poorten van de Services**: die heb je nodig in je Ingress.
+
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-service
-spec:
-  selector:
-    app: backend
-  ports:
-  - port: 5000
-    targetPort: 5000
-```
+
+## 4. Je eerste Ingress
+
+[`ingress-examples/01-basic.yaml`](ingress-examples/01-basic.yaml): stuur al het verkeer naar de frontend.
 
 ```yaml
-# frontend-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: frontend
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: frontend
-  template:
-    metadata:
-      labels:
-        app: frontend
-    spec:
-      containers:
-      - name: frontend
-        image: dimilan/pet-shelter-frontend:latest
-        ports:
-        - containerPort: 3000
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: frontend-service
-spec:
-  selector:
-    app: frontend
-  ports:
-  - port: 3000
-    targetPort: 3000
-```
-
-**Stap 2: Creëer Ingress Resource**
-
-```yaml
-# petshelter-ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: petshelter-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  name: petshelter
 spec:
-  ingressClassName: nginx  # Of "traefik" als je Traefik gebruikt
+  ingressClassName: traefik
   rules:
-  - host: petshelter.local
-    http:
-      paths:
-      # Frontend routes
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 3000
-      # API routes
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: backend-service
-            port:
-              number: 5000
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000
 ```
 
-**Stap 3: Apply de configuratie**
+| Regel | Betekenis |
+|---|---|
+| `kind: Ingress` | een lijst routingregels |
+| `ingressClassName: traefik` | welke controller deze regels uitvoert |
+| `rules:` | de lijst regels; hier één regel zonder `host`, dus voor **elke** hostnaam |
+| `path: /` + `pathType: Prefix` | alle paden die beginnen met `/`, dus alles |
+| `backend.service.name` / `port.number` | naar welke **Service** en welke **Service-poort** (niet de NodePort!) |
 
 ```bash
-# Deploy alles
-kubectl apply -f mongodb-deployment.yaml
-kubectl apply -f backend-deployment.yaml
-kubectl apply -f frontend-deployment.yaml
-kubectl apply -f petshelter-ingress.yaml
-
-# Verify
-kubectl get pods
-kubectl get svc
+kubectl apply -f ingress-examples/01-basic.yaml
 kubectl get ingress
+curl http://localhost/                # HTML van de PetShelter-frontend
 ```
 
-**Stap 4: Test de ingress**
+Open http://localhost in je browser: daar is je app, zonder poortnummer.
 
-```bash
-# Voor Minikube: Add to /etc/hosts
-echo "$(minikube ip) petshelter.local" | sudo tee -a /etc/hosts
+> `kubectl get ingress` toont `ADDRESS` soms leeg op Minikube. Dat is normaal en geen fout: kijk naar
+> `EXTERNAL-IP` van de Traefik-Service.
 
-# Test
-curl http://petshelter.local/
-curl http://petshelter.local/api/pets
+---
 
-# Of open in browser
-minikube service ingress-nginx-controller -n ingress-nginx
-```
+## 5. Routeren op pad en op hostnaam
 
-### Met TLS/HTTPS
+### Op pad
+
+[`ingress-examples/02-paths.yaml`](ingress-examples/02-paths.yaml): drie paden, drie Services.
 
 ```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: petshelter-tls
-type: kubernetes.io/tls
-stringData:
-  tls.crt: |
-    -----BEGIN CERTIFICATE-----
-    # Your certificate here
-    -----END CERTIFICATE-----
-  tls.key: |
-    -----BEGIN PRIVATE KEY-----
-    # Your private key here
-    -----END PRIVATE KEY-----
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: petshelter-ingress-tls
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  ingressClassName: nginx
-  tls:
-  - hosts:
-    - petshelter.example.com
-    secretName: petshelter-tls
   rules:
-  - host: petshelter.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 3000
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: backend-service
-            port:
-              number: 5000
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 5000
+          - path: /whoami
+            pathType: Prefix
+            backend:
+              service:
+                name: whoami
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000
 ```
 
----
+```bash
+kubectl apply -f ingress-examples/02-paths.yaml     # vervangt de vorige Ingress (zelfde naam)
+curl http://localhost/api/pets                      # JSON, rechtstreeks van de backend
+curl http://localhost/whoami                        # antwoord van whoami
+curl http://localhost/                              # de frontend
+```
 
-## Traefik als Alternatief
+- **Het langste pad wint.** `/api/pets` past bij `/api` én bij `/`; `/api` is langer, dus de backend krijgt de
+  request. De volgorde in het bestand maakt niet uit.
+- **Het pad wordt doorgegeven zoals het is.** De backend krijgt `/api/pets`, niet `/pets`. Dat werkt hier omdat de
+  backend zelf luistert op `/api/pets`.
 
-### Waarom Traefik?
+| `pathType` | `path: /api` past bij |
+|---|---|
+| `Prefix` | `/api`, `/api/`, `/api/pets`, maar **niet** `/apix` |
+| `Exact` | enkel `/api` |
 
-**Voordelen van Traefik:**
-- ✅ **Auto-discovery**: Automatische service detectie
-- ✅ **Real-time updates**: Geen reload nodig bij config changes
-- ✅ **Built-in SSL**: Automatische certificaat generatie met Let's Encrypt
-- ✅ **Dashboard**: Web UI voor monitoring en debugging
-- ✅ **Cloud native**: Speciaal designed voor containers en Kubernetes
-- ✅ **Modern**: HTTP/2, gRPC, WebSocket support out-of-the-box
+Gebruik `Prefix`, tenzij je bewust één exacte URL wil.
 
-### Traefik Installation
+### Load balancing zien
+
+whoami draait met 3 replicas. Voer dit een paar keer uit en kijk naar `Hostname`:
 
 ```bash
-# Add Traefik Helm repository
-helm repo add traefik https://helm.traefik.io/traefik
+for i in 1 2 3 4 5 6; do curl -s http://localhost/whoami | grep Hostname; done
+```
+
+Je ziet verschillende podnamen: de controller verdeelt de requests over alle pods. Dit is ook hoe de
+`/nodeinfo`-controle van de [Final](../00-Assessment/Devops/3-Final-Assessment.md) werkt: die vraagt herhaaldelijk
+een pagina op en verwacht antwoorden van **3 verschillende nodes**.
+
+### Op hostnaam
+
+Meerdere websites achter hetzelfde IP-adres, elk met een eigen naam.
+[`ingress-examples/03-hosts.yaml`](ingress-examples/03-hosts.yaml):
+
+```yaml
+  rules:
+    - host: petshelter.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000
+    - host: whoami.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: whoami
+                port:
+                  number: 80
+```
+
+```bash
+kubectl apply -f ingress-examples/03-hosts.yaml
+curl http://petshelter.localhost/      # de frontend
+curl http://whoami.localhost/          # whoami
+curl http://localhost/                 # 404 page not found: geen enkele regel past bij "localhost"
+```
+
+**Hoe weet Traefik welke site je wil?** Elke HTTP-request bevat een header `Host:` met de naam uit de adresbalk.
+Beide namen wijzen naar hetzelfde IP-adres; Traefik kijkt naar die header.
+
+**Waarom `.localhost`?** Namen die eindigen op `.localhost` wijzen in je browser en in `curl` automatisch naar
+`127.0.0.1`, zonder DNS of `/etc/hosts`. Handig om lokaal te testen. Met een andere naam (bv. op Linux, of
+`petshelter.local`) zet je zelf een regel in `/etc/hosts` (Windows: `C:\Windows\System32\drivers\etc\hosts`):
+
+```
+127.0.0.1  petshelter.local
+```
+
+Of test zonder iets in te stellen door de `Host`-header zelf mee te sturen:
+
+```bash
+curl -H "Host: whoami.localhost" http://127.0.0.1/
+```
+
+**Op pad of op host?** Allebei kan, ook samen in één regel (`host` + meerdere `paths`). Een typische opzet:
+`mijnsite.be` met `/` naar de frontend en `/api` naar de backend.
+
+---
+
+## 6. HTTPS
+
+De Ingress controller doet de HTTPS voor al je apps: de **controller** heeft het certificaat en ontsleutelt het
+verkeer, en je pods spreken gewoon HTTP. Dat heet **TLS-termination**. Je app hoeft niets van certificaten te weten.
+
+Het certificaat steek je in een **Secret** van het type `tls`, en in de Ingress verwijs je ernaar.
+
+### Lokaal: een eigen (self-signed) certificaat
+
+```bash
+openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=petshelter.localhost" -addext "subjectAltName=DNS:petshelter.localhost"
+
+kubectl create secret tls petshelter-tls --cert=tls.crt --key=tls.key
+```
+
+[`ingress-examples/04-tls.yaml`](ingress-examples/04-tls.yaml): enkel het `tls`-blok is nieuw.
+
+```yaml
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - petshelter.localhost
+      secretName: petshelter-tls
+  rules:
+    - host: petshelter.localhost
+      ...
+```
+
+```bash
+kubectl apply -f ingress-examples/04-tls.yaml
+curl -k https://petshelter.localhost/                 # -k: accepteer een certificaat dat niemand ondertekend heeft
+curl --cacert tls.crt https://petshelter.localhost/   # of: vertrouw expliciet jouw certificaat
+```
+
+Je browser toont een waarschuwing ("niet veilig"): logisch, want je hebt het certificaat zelf gemaakt. Voor een echte
+website heb je een certificaat nodig dat de browser vertrouwt.
+
+> Zet `tls.key` nooit in git: dat is de geheime sleutel van je certificaat.
+
+### In de cloud: gratis certificaten met Let's Encrypt
+
+In de Final heb je een echte cluster en een echte domeinnaam. Dan vraag je automatisch een gratis, vertrouwd
+certificaat aan bij **Let's Encrypt**, met **cert-manager**. Het principe:
+
+1. Je domeinnaam (DNS A-record) wijst naar het `EXTERNAL-IP` van Traefik.
+2. cert-manager vraagt een certificaat aan. Let's Encrypt controleert of je het domein echt beheert, door een
+   testbestand op te vragen via `http://jouwdomein/.well-known/acme-challenge/...` (de *HTTP-01 challenge*).
+3. cert-manager steekt het certificaat in de Secret die in je Ingress staat, en vernieuwt het automatisch voor het
+   vervalt (na 90 dagen).
+
+```bash
+# 1. cert-manager installeren (eenmalig per cluster)
+helm repo add jetstack https://charts.jetstack.io
 helm repo update
+helm install cert-manager jetstack/cert-manager -n cert-manager --create-namespace --set crds.enabled=true
 
-# Install Traefik
-helm install traefik traefik/traefik \
-  --namespace traefik-system \
-  --create-namespace \
-  --set dashboard.enabled=true \
-  --set dashboard.domain=traefik.localhost
+# 2. Een ClusterIssuer: "vraag certificaten aan bij Let's Encrypt, via Traefik"
+kubectl apply -f ingress-examples/cluster-issuer.yaml
+kubectl get clusterissuer           # letsencrypt   READY True
 ```
 
-### Traefik Configuration
+Daarna zet je in je Ingress één annotation bij en vul je je echte domein in
+([`ingress-examples/05-letsencrypt.yaml`](ingress-examples/05-letsencrypt.yaml)):
 
-**traefik-values.yaml:**
 ```yaml
-deployment:
-  replicas: 2
-
-service:
-  type: LoadBalancer
-
-ports:
-  web:
-    port: 80
-    expose: true
-  websecure:
-    port: 443
-    expose: true
-  traefik:
-    port: 9000
-    expose: true
-
-# Enable dashboard
-api:
-  dashboard: true
-  insecure: true
-
-# Automatic SSL certificates
-certificatesResolvers:
-  letsencrypt:
-    acme:
-      email: admin@example.com
-      storage: /data/acme.json
-      httpChallenge:
-        entryPoint: web
-
-# Additional config
-additionalArguments:
-  - "--providers.kubernetesingress.ingressclass=traefik"
-  - "--log.level=INFO"
-
-# Resources
-resources:
-  requests:
-    cpu: "100m"
-    memory: "50Mi"
-  limits:
-    cpu: "300m"
-    memory: "150Mi"
-```
-
-**Install met custom values:**
-```bash
-helm install traefik traefik/traefik \
-  --namespace traefik-system \
-  --create-namespace \
-  -f traefik-values.yaml
-```
-
-### Access Traefik Dashboard
-
-```bash
-# Port-forward to access dashboard
-kubectl port-forward -n traefik-system $(kubectl get pods -n traefik-system | grep traefik | awk '{print $1}') 9000:9000
-
-# Open in browser: http://localhost:9000/dashboard/
-```
-
----
-
-## Advanced Ingress Features
-type: kubernetes.io/tls
-data:
-  tls.crt: LS0tLS1CRUdJTi... # base64 encoded cert
-  tls.key: LS0tLS1CRUdJTi... # base64 encoded key
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
 metadata:
-  name: webapp-ingress
-spec:
-  tls:
-  - hosts:
-    - myapp.example.com
-    secretName: webapp-tls
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
-```
-
-### Automatic SSL with cert-manager
-
-**Install cert-manager:**
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
-```
-
-**ClusterIssuer setup:**
-```yaml
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt-prod
-spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@example.com
-    privateKeySecretRef:
-      name: letsencrypt-prod
-    solvers:
-    - http01:
-        ingress:
-          class: traefik
-```
-
-**Automatic certificate Ingress:**
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress
+  name: petshelter
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
+  ingressClassName: traefik
   tls:
-  - hosts:
-    - myapp.example.com
-    secretName: webapp-tls-auto  # Will be auto-generated
+    - hosts:
+        - petshelter.jouwdomein.be
+      secretName: petshelter-tls      # cert-manager maakt deze Secret zelf aan
   rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
+    - host: petshelter.jouwdomein.be
+      ...
 ```
-
----
-
-## Load Balancing Strategieën
-
-### Traefik Load Balancing
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: webapp-service
-  annotations:
-    traefik.ingress.kubernetes.io/service.loadbalancer.method: wrr
-    traefik.ingress.kubernetes.io/service.loadbalancer.healthcheck.path: /health
-spec:
-  selector:
-    app: webapp
-  ports:
-  - port: 80
-    targetPort: 8080
-```
-
-### Advanced Load Balancing
-
-**Weighted Round Robin:**
-```yaml
-apiVersion: traefik.containo.us/v1alpha1
-kind: TraefikService
-metadata:
-  name: weighted-webapp
-spec:
-  weighted:
-    services:
-    - name: webapp-v1
-      port: 80
-      weight: 70  # 70% traffic to v1
-    - name: webapp-v2
-      port: 80
-      weight: 30  # 30% traffic to v2 (canary)
-```
-
----
-
-## Complete Three-Tier Setup
-
-### Application Services
-
-```yaml
-# Frontend Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: frontend-service
-spec:
-  selector:
-    app: frontend
-  ports:
-  - port: 80
-    targetPort: 80
-
----
-# Backend Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-service
-spec:
-  selector:
-    app: backend
-  ports:
-  - port: 3000
-    targetPort: 3000
-
----
-# Database Service (internal only)
-apiVersion: v1
-kind: Service
-metadata:
-  name: database-service
-spec:
-  selector:
-    app: database
-  ports:
-  - port: 5432
-    targetPort: 5432
-  type: ClusterIP  # Internal only!
-```
-
-### Comprehensive Ingress
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    traefik.ingress.kubernetes.io/router.middlewares: default-auth@kubernetescrd
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-spec:
-  tls:
-  - hosts:
-    - myapp.example.com
-    secretName: webapp-tls
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      # Frontend routes
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 80
-      
-      # API routes
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: backend-service
-            port:
-              number: 3000
-      
-      # Health check endpoint
-      - path: /health
-        pathType: Exact
-        backend:
-          service:
-            name: backend-service
-            port:
-              number: 3000
-```
-
----
-
-## Advanced Ingress Features
-
-### Middleware Configuration
-
-```yaml
-# Basic Auth Middleware
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: basic-auth
-spec:
-  basicAuth:
-    secret: authsecret
-
----
-# Rate Limiting Middleware
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: rate-limit
-spec:
-  rateLimit:
-    burst: 100
-    average: 50
-
----
-# CORS Middleware
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: cors-header
-spec:
-  headers:
-    accessControlAllowMethods:
-      - GET
-      - POST
-      - PUT
-    accessControlAllowOriginList:
-      - https://myapp.example.com
-    accessControlMaxAge: 100
-```
-
----
-
-## External DNS Integration
-
-### Automatic DNS Management
 
 ```bash
-# Install external-dns
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm install external-dns bitnami/external-dns \
-  --set provider=cloudflare \
-  --set cloudflare.apiToken=your-api-token \
-  --set domainFilters[0]=example.com
+kubectl get certificate             # petshelter-tls   READY True   (na 1 à 2 minuten)
 ```
 
-**Ingress with auto-DNS:**
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress
-  annotations:
-    external-dns.alpha.kubernetes.io/hostname: myapp.example.com
-    external-dns.alpha.kubernetes.io/ttl: "120"
-spec:
-  rules:
-  - host: myapp.example.com
-    # ... rest of config
-```
+Werkt dit niet op Minikube? Klopt: Let's Encrypt moet je domein **vanaf het internet** kunnen bereiken. Dat kan pas
+in de cloud. Meer, en hoe je fouten zoekt: [Ingress Advanced – cert-manager](ingress-advanced.md#4-cert-manager-en-lets-encrypt-in-detail).
 
 ---
 
-## Monitoring & Troubleshooting
+## 7. Fouten zoeken
 
-### Ingress Debugging
+Werk altijd van buiten naar binnen: controller → Ingress → Service → pods.
 
 ```bash
-# Check ingress status
-kubectl get ingress
-
-# Describe ingress for events
-kubectl describe ingress webapp-ingress
-
-# Check ingress controller logs
-kubectl logs -n traefik-system deployment/traefik
-
-# Test ingress connectivity
-curl -H "Host: myapp.example.com" http://CLUSTER_IP
-
-# Check certificate status
-kubectl get certificate
-kubectl describe certificate webapp-tls
+kubectl get pods,svc -n traefik     # 1. draait de controller, en heeft hij een EXTERNAL-IP?
+kubectl get ingress                 # 2. bestaat je Ingress, met de juiste CLASS en HOSTS?
+kubectl describe ingress petshelter #    staan de backends (Service:poort) juist?
+kubectl describe svc frontend-service    # 3. staan er pod-IP's bij "Endpoints"? Leeg = geen werkende pods
+kubectl get pods                    # 4. draaien en zijn de pods Ready?
+kubectl logs -n traefik deploy/traefik   # de logs van de controller
 ```
 
-### Common Issues & Solutions
-
-**1. Ingress not working:**
-```bash
-# Check if ingress controller is running
-kubectl get pods -n traefik-system
-
-# Verify service endpoints
-kubectl get endpoints webapp-service
-```
-
-**2. SSL certificate issues:**
-```bash
-# Check cert-manager logs
-kubectl logs -n cert-manager deployment/cert-manager
-
-# Check certificate challenges
-kubectl get challenges
-kubectl describe challenge webapp-tls-auto-123
-```
+| Wat je ziet | Wat er meestal mis is |
+|---|---|
+| geen verbinding (connection refused / timeout) | de controller is niet bereikbaar: `EXTERNAL-IP <pending>` (start `minikube tunnel`), of je gebruikt de verkeerde poort |
+| `404 page not found` (platte tekst) | Traefik antwoordt, maar **geen regel past**: verkeerde `host` of pad, een tikfout in `ingressClassName`, of Traefik negeert je Ingress omdat de **Service-naam of -poort niet bestaat**. Dat laatste staat in de logs van Traefik (`service port not found`) |
+| `503 no available server` | de regel en de Service kloppen, maar er zijn geen werkende pods: labels die niet overeenkomen, pods niet Ready, of 0 replicas |
+| de 404-pagina **van je eigen app** | de request komt aan bij je app, maar met een pad dat je app niet kent |
+| certificaat `TRAEFIK DEFAULT CERT` | Traefik vindt je TLS-Secret niet: verkeerde `secretName`, Secret in een andere namespace, of cert-manager is nog bezig |
+| Ingress werkt niet in een andere namespace | een Ingress kan enkel naar Services **in zijn eigen namespace** verwijzen: zet hem in dezelfde namespace als je app |
 
 ---
 
-## Kubernetes Ingress FAQs
+## 8. Commando's
 
-### Is Ingress a load balancer?
-
-**Nee.** Ingress is NIET een load balancer. 
-
-- **Ingress** is een Kubernetes resource object dat routing regels, custom headers, en TLS configuraties bevat
-- De **Ingress Controller** fungeert als de daadwerkelijke load balancer en reverse proxy
-- De Ingress Controller leest de Ingress regels en routeert het verkeer
-
-### Why do I need an ingress controller?
-
-De ingress controller is verantwoordelijk voor de **daadwerkelijke routing** van externe traffic naar Kubernetes service endpoints. 
-
-**Zonder een ingress controller:**
-- Routing regels toegevoegd aan ingress objects zullen NIET werken
-- Het is alsof je een routekaart hebt (ingress) maar geen chauffeur (controller)
-
-**Met een ingress controller:**
-- De controller leest de ingress objects uit de Kubernetes API
-- Configureert een reverse proxy (Nginx/Traefik/HAProxy)
-- Routeert traffic volgens de regels in de ingress objects
-
-### What is the difference between ingress and Nginx?
-
-- **Ingress** = Een Kubernetes object (resource definition)
-- **Nginx** = Software die gebruikt wordt als een ingress controller (reverse proxy implementatie)
-
-**Analogie:**
-- Ingress = Receptenboek (instructies)
-- Nginx = De kok die het recept uitvoert
-
-### Can we route traffic to multiple paths using ingress?
-
-**Ja!** Met een enkele ingress definitie kun je meerdere path-based routing configuraties toevoegen.
-
-**Voorbeeld:**
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: multi-path-ingress
-spec:
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 80
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: api-service
-            port:
-              number: 3000
-      - path: /admin
-        pathType: Prefix
-        backend:
-          service:
-            name: admin-service
-            port:
-              number: 4000
-      - path: /docs
-        pathType: Prefix
-        backend:
-          service:
-            name: documentation-service
-            port:
-              number: 5000
-```
-
-### Does ingress support TLS configuration?
-
-**Ja!** Je kan TLS configuraties hebben in je ingress object definitie.
-
-**Hoe het werkt:**
-1. TLS certificaat wordt toegevoegd als een Kubernetes Secret
-2. De Secret wordt gerefereerd in het ingress object
-3. De ingress controller handelt de TLS termination af
-
-**Voorbeeld:**
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: webapp-tls
-type: kubernetes.io/tls
-data:
-  tls.crt: <base64-encoded-cert>
-  tls.key: <base64-encoded-key>
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: webapp-ingress
-spec:
-  tls:
-  - hosts:
-    - myapp.example.com
-    secretName: webapp-tls  # Reference to the secret
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-service
-            port:
-              number: 80
-```
-
-### Wat is het verschil tussen IngressClass en ingress controller?
-
-**IngressClass** = Een Kubernetes resource dat een specifieke ingress controller implementatie definieert
-
-**Gebruik:**
-- Als je meerdere ingress controllers hebt (bijvoorbeeld: Nginx EN Traefik)
-- Je moet specificeren welke controller een ingress resource moet verwerken
-
-**Voorbeeld:**
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: nginx
-spec:
-  controller: k8s.io/ingress-nginx
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-ingress
-spec:
-  ingressClassName: nginx  # Uses nginx controller
-  rules:
-  - host: myapp.example.com
-    # ...
-```
-
-### Can I use ingress without a cloud load balancer?
-
-**Ja!** Er zijn verschillende opties:
-
-1. **NodePort**: Ingress controller exposed via NodePort
-   ```yaml
-   service:
-     type: NodePort
-   ```
-
-2. **HostNetwork**: Ingress controller gebruikt host network
-   ```yaml
-   hostNetwork: true
-   ```
-
-3. **MetalLB**: Software load balancer voor bare metal
-   ```bash
-   kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.0/config/manifests/metallb-native.yaml
-   ```
-
-4. **Minikube**: Built-in ingress support
-   ```bash
-   minikube addons enable ingress
-   ```
+| Commando | Wat |
+|---|---|
+| `kubectl apply -f ingress.yaml` | Ingress aanmaken of bijwerken |
+| `kubectl get ingress` (kort: `ing`) | alle Ingresses met class, hosts en adres |
+| `kubectl describe ingress <naam>` | regels en backends in detail |
+| `kubectl delete ingress <naam>` | Ingress verwijderen |
+| `kubectl get ingressclass` | welke controllers er zijn |
+| `kubectl get svc -n traefik` | het externe IP-adres van de controller |
+| `kubectl logs -n traefik deploy/traefik` | logs van Traefik |
+| `kubectl create secret tls <naam> --cert=... --key=...` | TLS-Secret aanmaken |
+| `kubectl get certificate` | status van certificaten (cert-manager) |
+| `minikube tunnel` | LoadBalancer-IP op Minikube (venster open laten) |
 
 ---
 
-## Monitoring & Troubleshooting
+## 9. Oefeningen
 
-### Ingress Debugging
+1. **Eerste Ingress.** Installeer Traefik, deploy PetShelter en open de app op http://localhost (zonder poortnummer).
+   Zet daarna in `../06-Kubernetes/6c-minikube-demo/k8s/frontend-deployment.yaml` de frontend-Service terug naar
+   `ClusterIP` (haal `type: NodePort` en `nodePort` weg): werkt de app via de Ingress nog?
+2. **Paden.** Pas `02-paths.yaml` toe. Wat krijg je op `/api/pets`, `/whoami/test` en `/bestaat-niet`? Wie beantwoordt
+   elke request: Traefik, de frontend, de backend of whoami?
+3. **Load balancing.** Schaal whoami naar 5 replicas (`kubectl scale deploy whoami --replicas=5`) en tel hoeveel
+   verschillende `Hostname`s je ziet bij 20 requests.
+4. **Hosts.** Voeg aan `03-hosts.yaml` een derde host `api.localhost` toe die naar `backend-service` gaat. Test met
+   `curl http://api.localhost/api/pets`.
+5. **Fouten maken.** Verander in je Ingress de Service-poort in `3001`. Welke foutcode krijg je, en wat staat er in
+   de logs van Traefik? Zet de poort terug en verander `ingressClassName` in `traefk`. Schaal daarna de frontend naar
+   0 replicas. Welke foutcode krijg je telkens? Zoek de fouten met de commando's uit sectie 7.
+6. **HTTPS.** Maak het self-signed certificaat, pas `04-tls.yaml` toe en open https://petshelter.localhost. Bekijk in
+   je browser wie het certificaat heeft uitgegeven.
 
-```bash
-# Check ingress status
-kubectl get ingress
-
-# Describe ingress voor events en details
-kubectl describe ingress webapp-ingress
-
-# Check ingress controller logs (Nginx)
-kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
-
-# Check ingress controller logs (Traefik)
-kubectl logs -n traefik-system deployment/traefik
-
-# Test ingress connectivity
-curl -H "Host: myapp.example.com" http://CLUSTER_IP
-
-# Check certificate status
-kubectl get certificate
-kubectl describe certificate webapp-tls
-```
-
-### Common Issues & Solutions
-
-**1. Ingress not working:**
-```bash
-# Check if ingress controller is running
-kubectl get pods -n ingress-nginx
-# Expected: Controller pod moet Running zijn
-
-# Verify service endpoints
-kubectl get endpoints webapp-service
-# Expected: Endpoints moeten IP adressen hebben
-
-# Check if service selector matches pod labels
-kubectl get pods --show-labels
-kubectl get svc webapp-service -o yaml | grep selector
-```
-
-**2. SSL certificate issues:**
-```bash
-# Check cert-manager logs
-kubectl logs -n cert-manager deployment/cert-manager
-
-# Check certificate challenges
-kubectl get challenges
-kubectl describe challenge webapp-tls-auto-123
-
-# Check certificate ready status
-kubectl get certificate webapp-tls
-# Expected: READY = True
-```
-
-**3. 404 Not Found errors:**
-```bash
-# Check if path matches exactly
-kubectl get ingress webapp-ingress -o yaml
-
-# Verify backend service exists
-kubectl get svc
-
-# Test service directly
-kubectl port-forward svc/webapp-service 8080:80
-curl localhost:8080
-
-# Check ingress controller configuration
-kubectl exec -it -n ingress-nginx deployment/ingress-nginx-controller -- cat /etc/nginx/nginx.conf | grep -A 20 webapp
-```
-
-**4. Backend unhealthy:**
-```bash
-# Check pod status
-kubectl get pods
-
-# Check pod logs
-kubectl logs <pod-name>
-
-# Check service endpoint
-kubectl describe svc webapp-service
-# Expected: Endpoints moet pod IPs bevatten
-
-# Test pod directly
-kubectl port-forward <pod-name> 8080:80
-curl localhost:8080
-```
-
----
-
-## Best Practices
-
-### Security
-- ✅ Always use HTTPS in production (TLS/SSL)
-- ✅ Implement proper authentication middleware
-- ✅ Use rate limiting to prevent DDoS abuse
-- ✅ Keep ingress controller updated (security patches)
-- ✅ Use network policies voor toegangscontrole
-- ✅ Scan certificates voor expiration
-- ✅ Gebruik secrets voor gevoelige data (niet hardcoded)
-
-### Performance
-- ✅ Enable gzip compression middleware
-- ✅ Use caching waar appropriate
-- ✅ Monitor ingress metrics (Prometheus/Grafana)
-- ✅ Implement proper health checks
-- ✅ Configure connection pooling
-- ✅ Set appropriate timeouts
-- ✅ Use HTTP/2 waar mogelijk
-
-### Maintenance
-- ✅ Use GitOps voor ingress configurations (ArgoCD/Flux)
-- ✅ Test ingress changes in staging VOOR production
-- ✅ Monitor certificate expiration dates
-- ✅ Have backup ingress controllers (high availability)
-- ✅ Document custom annotations
-- ✅ Version control alle manifests
-- ✅ Implement proper logging en monitoring
-
-### Production Checklist
-
-```yaml
-# Production-ready ingress example
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: production-ingress
-  annotations:
-    # TLS/SSL
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    
-    # Security
-    nginx.ingress.kubernetes.io/rate-limit: "100"
-    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.example.com"
-    
-    # Performance
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    
-    # Monitoring
-    nginx.ingress.kubernetes.io/enable-access-log: "true"
-spec:
-  ingressClassName: nginx
-  tls:
-  - hosts:
-    - app.example.com
-    secretName: app-tls
-  rules:
-  - host: app.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 80
-```
-
----
-
-## Volgende Stappen
-
-### Advanced Topics
-
-1. **Gateway API**: De opvolger van Ingress
-   - Meer expressieve routing
-   - Role-oriented design
-   - Portable across implementations
-   - Reference: https://kubernetes.io/docs/concepts/services-networking/gateway/
-
-2. **Service Mesh** (Istio, Linkerd):
-   - Advanced traffic management
-   - Mutual TLS
-   - Observability
-   - Circuit breaking
-
-3. **API Gateway** (Kong, Tyk):
-   - API management
-   - Authentication/Authorization
-   - Rate limiting
-   - Analytics
-
-### Resources
-
-- 📚 [Kubernetes Ingress Documentation](https://kubernetes.io/docs/concepts/services-networking/ingress/)
-- 📚 [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
-- 📚 [Traefik Documentation](https://doc.traefik.io/traefik/)
-- 📚 [Cert-Manager](https://cert-manager.io/docs/)
-- 📚 [Ingress Controller Comparison](https://docs.google.com/spreadsheets/d/191WWNpjJ2za6-nbG4ZoUMXMpUK8KlCIosvQB0f-oq3k/edit#gid=907731238)
-- 📚 [DevOpsCube Ingress Setup Guide](https://devopscube.com/setup-ingress-kubernetes-nginx-controller/)
-- 📚 [Kubernetes Gateway API Tutorial](https://devopscube.com/kubernetes-gateway-api/)
-
----
-
-## Conclusie: Professional External Access
-
-### Voor Ingress
-
-```bash
-# Multiple LoadBalancers needed = $$$ kostbaar
-kubectl expose deployment frontend --type=LoadBalancer --port=80
-kubectl expose deployment backend --type=LoadBalancer --port=3000
-kubectl expose deployment api-v1 --type=LoadBalancer --port=8080
-kubectl expose deployment api-v2 --type=LoadBalancer --port=8081
-# Result: 4 load balancers = 4x de kosten!
-```
-
-### Met Ingress
-
-```yaml
-# Eén ingress handles everything = Cost effective!
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: unified-ingress
-spec:
-  rules:
-  - host: app.example.com
-    http:
-      paths:
-      - path: /           → frontend
-      - path: /api/v1     → backend
-      - path: /api/v2     → api-v2
-  # Eén load balancer voor alles!
-```
-
-### Voordelen Samengevat
-
-**Cost & Efficiency:**
-- ✅ **Cost effective**: Eén load balancer voor alle services (bespaar $$$)
-- ✅ **Simplified management**: Eén entry point
-- ✅ **Resource efficiency**: Minder overhead
-
-**Functionality:**
-- ✅ **SSL/TLS management**: Automatische certificate handling (Let's Encrypt)
-- ✅ **Advanced routing**: Host-based en path-based routing
-- ✅ **Flexible configuration**: Annotations voor fine-tuning
-
-**Production Ready:**
-- ✅ **Rate limiting**: DDoS protection
-- ✅ **Authentication**: Middleware support
-- ✅ **Monitoring**: Metrics en logging
-- ✅ **Health checks**: Automatic failover
-
-**Cloud Native:**
-- ✅ **DNS integration**: Automatic DNS updates (External DNS)
-- ✅ **Certificate automation**: Cert-manager integration
-- ✅ **GitOps friendly**: Declarative configuration
-
-**Ingress + Controller = Professional Kubernetes Networking! 🚀**
-
-**Key Takeaways:**
-1. Ingress is een resource object (regels), Ingress Controller is de implementatie (routing)
-2. Altijd HTTPS gebruiken in productie (TLS/cert-manager)
-3. Eén load balancer kan alle services bedienen (cost savings!)
-4. Kies de juiste ingress controller voor je use case (Nginx, Traefik, HAProxy)
-5. Monitor en test ingress configuraties voordat je naar productie gaat
-
-
-
-Ingress + Traefik = Professional Kubernetes networking!
+**Volgende stap:** in de [Final](../00-Assessment/Devops/3-Final-Assessment.md) doe je dit in een echte cluster, met
+je eigen domein, Let's Encrypt en de route `/nodeinfo`. Zet je Ingress dan in je Helm chart
+([voorbeeld](../07-Helm/helm-petshelter.md)).

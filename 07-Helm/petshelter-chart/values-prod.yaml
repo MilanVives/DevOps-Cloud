@@ -1,0 +1,14 @@
+# Productie: meer replicas, meer opslag, HTTPS met Let's Encrypt.
+replicas:
+  frontend: 3
+  backend: 3
+
+database:
+  storage: 5Gi
+
+ingress:
+  enabled: true
+  host: petshelter.jouwdomein.be
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt

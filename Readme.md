@@ -141,38 +141,18 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ## [Les 7 – Helm Package Management](07-Helm/)
 
-- [Helm Tutorial](07-Helm/helm.md) - Kubernetes package management fundamentals
-- [Helm PetShelter Migration](07-Helm/helm-petshelter.md) - Praktische migratie van Kubernetes naar Helm
-- **Onderwerpen:**
-  - Kubernetes applicatie packaging en templating
-  - Helm charts en custom chart development
-  - Package management en versioning strategieën
-  - Helm repositories en chart distribution
-  - Complex deployments met Helm dependency management
-  - Stap-voor-stap migratie van PetShelter applicatie naar Helm
-  - Values.yaml configuratie en template development
-  - Helper templates en best practices
+- [Helm](07-Helm/helm.md) - Begrippen, bestaande charts gebruiken, je eigen chart, templates, één chart voor test en productie
+- [PetShelter naar Helm](07-Helm/helm-petshelter.md) - Stap voor stap de manifests uit les 6 omzetten naar een chart (basis voor de Final)
+- [Helm Advanced](07-Helm/helm-advanced.md) - Helpers, values-schema, tests en hooks, dependencies, publiceren, veilig upgraden, Helm in CI/CD, secrets
+- Voorbeelden: [hello-chart](07-Helm/hello-chart/) en [petshelter-chart](07-Helm/petshelter-chart/)
 
 ## [Les 8 – Ingress & Reverse Proxies](08-Ingress-and-Reverse-Proxies/)
 
-- [Ingress Controllers](08-Ingress-and-Reverse-Proxies/ingress.md) - Complete Kubernetes ingress fundamentals
-- [Traefik Tutorial](08-Ingress-and-Reverse-Proxies/Traefik.md) - Modern reverse proxy met automatische SSL
-- [Nginx Tutorial](08-Ingress-and-Reverse-Proxies/Nginx.md) - Klassieke reverse proxy configuratie
-- [Traefik Examples](08-Ingress-and-Reverse-Proxies/traefik-examples/) - Praktische Traefik configuraties
-- [Nginx Examples](08-Ingress-and-Reverse-Proxies/nginx-examples/) - Praktische Nginx voorbeelden
-- **Onderwerpen:**
-  - Ingress controllers en routing mechanismen
-  - Kubernetes Ingress resources en controllers (NGINX, Traefik, HAProxy)
-  - Ingress architectuur en deployment patterns
-  - Traefik als modern reverse proxy met automatische SSL certificates (Let's Encrypt)
-  - Nginx reverse proxy configuratie met port redirection en upstream servers
-  - Load balancing strategieën en algoritmes
-  - SSL/TLS certificate management (automatisch en manueel)
-  - External DNS en domain management voor production
-  - Container-naar-container proxy routing
-  - Path-based en host-based routing configuraties
-  - Health checks en monitoring van ingress traffic
-  - Best practices voor production ingress setups
+- [Ingress](08-Ingress-and-Reverse-Proxies/ingress.md) - Ingress en Ingress controller, Traefik op Minikube, routeren op pad en hostnaam, HTTPS met een eigen certificaat en met Let's Encrypt, fouten zoeken
+- [Ingress Advanced](08-Ingress-and-Reverse-Proxies/ingress-advanced.md) - Werking van een controller, IngressClass, cert-manager in detail, Traefik in productie, middlewares, Gateway API
+- [Ingress-voorbeelden](08-Ingress-and-Reverse-Proxies/ingress-examples/) - Alle YAML-bestanden uit de les
+- [Traefik met Docker](08-Ingress-and-Reverse-Proxies/Traefik.md) en [voorbeelden](08-Ingress-and-Reverse-Proxies/traefik-examples/) - Reverse proxy met automatische SSL, buiten Kubernetes
+- [Nginx](08-Ingress-and-Reverse-Proxies/Nginx.md) en [voorbeelden](08-Ingress-and-Reverse-Proxies/nginx-examples/) - Klassieke reverse proxy configuratie
 
 ## [Les 9 – CI/CD](09-CI-CD/)
 

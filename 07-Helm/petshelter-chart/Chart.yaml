@@ -1,0 +1,6 @@
+apiVersion: v2
+name: petshelter
+description: PetShelter (MongoDB, backend en frontend) als Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
