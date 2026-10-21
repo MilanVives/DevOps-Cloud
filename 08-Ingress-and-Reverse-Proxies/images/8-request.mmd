@@ -1,0 +1,5 @@
+graph LR
+    U["Browser<br/>petshelter.localhost/api/pets"] --> T["Traefik<br/>LoadBalancer :80"]
+    T -->|"regel: /api"| S["Service<br/>backend-service:5000"]
+    S --> P1["backend pod 1"]
+    S --> P2["backend pod 2"]

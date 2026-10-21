@@ -1,0 +1,7 @@
+graph LR
+    C["Chart<br/>templates/*.yaml"] --> H(("helm install"))
+    V["Values<br/>values.yaml, -f, --set"] --> H
+    H --> R1["Release 'petshelter'<br/>revision 1"]
+    R1 -->|helm upgrade| R2["revision 2"]
+    R2 -->|helm upgrade| R3["revision 3"]
+    R3 -.->|helm rollback 2| R2

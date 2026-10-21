@@ -1,0 +1,5 @@
+graph LR
+    U1["petshelter.localhost"] --> T["Traefik<br/>zelfde IP"]
+    U2["whoami.localhost"] --> T
+    T -->|"Host: petshelter.localhost"| F["frontend-service"]
+    T -->|"Host: whoami.localhost"| W["whoami"]

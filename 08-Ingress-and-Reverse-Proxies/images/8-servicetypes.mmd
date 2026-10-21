@@ -1,0 +1,12 @@
+graph LR
+    subgraph Met["Met Ingress: 1 extern IP"]
+        L["LoadBalancer IP"] --- T["Traefik"]
+        T --- B1["app 1 (ClusterIP)"]
+        T --- B2["app 2 (ClusterIP)"]
+        T --- B3["app 3 (ClusterIP)"]
+    end
+    subgraph Zonder["Zonder Ingress: 3 externe IP's"]
+        L1["LoadBalancer IP 1"] --- A1["app 1"]
+        L2["LoadBalancer IP 2"] --- A2["app 2"]
+        L3["LoadBalancer IP 3"] --- A3["app 3"]
+    end

@@ -1,0 +1,5 @@
+graph LR
+    T["templates/backend.yaml<br/>replicas: {{ .Values.replicas.backend }}"] --> E["Helm vult in"]
+    V["values-prod.yaml<br/>replicas.backend: 3"] --> E
+    E --> Y["gewone YAML<br/>replicas: 3"]
+    Y -->|"Helm stuurt naar"| K["Cluster"]

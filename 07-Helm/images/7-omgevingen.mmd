@@ -1,0 +1,5 @@
+graph LR
+    C["petshelter-chart<br/>+ values.yaml"] --> T["values-test.yaml<br/>1 replica, geen HTTPS"]
+    C --> P["values-prod.yaml<br/>3 replicas, HTTPS"]
+    T -->|"helm upgrade"| NT["namespace test"]
+    P -->|"helm upgrade"| NP["namespace prod"]

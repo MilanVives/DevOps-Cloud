@@ -1,0 +1,6 @@
+graph LR
+    U["Browser"] -->|"poort 80 / 443"| C["Ingress controller<br/>Traefik"]
+    I["Ingress<br/>de regels"] -.->|leest| C
+    C -->|"/"| F["frontend-service"]
+    C -->|"/api"| B["backend-service"]
+    C -->|"/whoami"| W["whoami"]

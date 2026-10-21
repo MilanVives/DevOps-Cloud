@@ -142,6 +142,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 ## [Les 7 – Helm Package Management](07-Helm/)
 
 - [Helm](07-Helm/helm.md) - Begrippen, bestaande charts gebruiken, je eigen chart, templates, één chart voor test en productie
+- [Slides](07-Helm/helm-slides.md) - Marp-slidedeck versie voor in de les
 - [PetShelter naar Helm](07-Helm/helm-petshelter.md) - Stap voor stap de manifests uit les 6 omzetten naar een chart (basis voor de Final)
 - [Helm Advanced](07-Helm/helm-advanced.md) - Helpers, values-schema, tests en hooks, dependencies, publiceren, veilig upgraden, Helm in CI/CD, secrets
 - Voorbeelden: [hello-chart](07-Helm/hello-chart/) en [petshelter-chart](07-Helm/petshelter-chart/)
@@ -149,6 +150,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 ## [Les 8 – Ingress & Reverse Proxies](08-Ingress-and-Reverse-Proxies/)
 
 - [Ingress](08-Ingress-and-Reverse-Proxies/ingress.md) - Ingress en Ingress controller, Traefik op Minikube, routeren op pad en hostnaam, HTTPS met een eigen certificaat en met Let's Encrypt, fouten zoeken
+- [Slides](08-Ingress-and-Reverse-Proxies/ingress-slides.md) - Marp-slidedeck versie voor in de les
 - [Ingress Advanced](08-Ingress-and-Reverse-Proxies/ingress-advanced.md) - Werking van een controller, IngressClass, cert-manager in detail, Traefik in productie, middlewares, Gateway API
 - [Ingress-voorbeelden](08-Ingress-and-Reverse-Proxies/ingress-examples/) - Alle YAML-bestanden uit de les
 - [Traefik met Docker](08-Ingress-and-Reverse-Proxies/Traefik.md) en [voorbeelden](08-Ingress-and-Reverse-Proxies/traefik-examples/) - Reverse proxy met automatische SSL, buiten Kubernetes

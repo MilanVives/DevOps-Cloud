@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant I as Ingress
+    participant CM as cert-manager
+    participant LE as Let's Encrypt
+    participant T as Traefik
+    I->>CM: annotation cluster-issuer: letsencrypt
+    CM->>LE: vraag certificaat voor petshelter.jouwdomein.be
+    LE-->>CM: bewijs eerst dat het domein van jou is (token)
+    CM->>T: tijdelijke route /.well-known/acme-challenge/
+    LE->>T: GET http://petshelter.jouwdomein.be/.well-known/acme-challenge/token
+    T-->>LE: token klopt
+    LE-->>CM: certificaat (90 dagen geldig)
+    CM->>T: Secret petshelter-tls, wordt automatisch vernieuwd

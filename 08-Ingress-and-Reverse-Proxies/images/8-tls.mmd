@@ -1,0 +1,4 @@
+graph LR
+    U["Browser"] -->|"HTTPS (versleuteld)"| T["Traefik<br/>certificaat uit Secret"]
+    T -->|"HTTP"| S["Service"]
+    S --> P["pods<br/>weten niets van certificaten"]
