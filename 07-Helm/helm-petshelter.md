@@ -501,8 +501,14 @@ helm template petshelter ./petshelter-chart | less                       # stand
 helm template petshelter ./petshelter-chart -f petshelter-chart/values-prod.yaml -s templates/ingress.yaml
 ```
 
+`helm template` installeert niets: het toont de YAML die Helm zou maken. Het laatste commando betekent: "maak de
+YAML met de **productie**-waarden (`-f values-prod.yaml`), en **toon** enkel het resultaat van `templates/ingress.yaml`
+(`-s`, kort voor `--show-only`)". De `-s` is enkel een filter op de uitvoer, zodat je niet door alle YAML moet
+scrollen. Bij `helm install` en `helm upgrade` neemt Helm altijd **alle** templates mee.
+
 Kijk in de uitvoer: staan de juiste images en replicas erin? Zit er enkel een Ingress in als `ingress.enabled` aan
-staat?
+staat? (Zonder `-f values-prod.yaml` krijg je `Error: could not find template templates/ingress.yaml in chart`. Dat is geen
+fout in je chart: in `values.yaml` staat `enabled: false`, dus de template levert niets op.)
 
 ---
 
@@ -556,7 +562,12 @@ ingress:
     clusterIssuer: letsencrypt
 ```
 
-Op een echte cluster met jouw domein en cert-manager is dit genoeg:
+Je geeft enkel het values-bestand mee: de chart neemt **alle** templates mee, ook `ingress.yaml`, en
+`ingress.enabled: true` zorgt ervoor dat de Ingress aangemaakt wordt. Altijd in deze volgorde: **eerst de namespace en
+de Secrets, dan de app.**
+
+**Op een echte cluster** met jouw domein en cert-manager is dit genoeg. Het certificaat (Secret `petshelter-tls`)
+maakt cert-manager zelf aan:
 
 ```bash
 kubectl create namespace prod
@@ -564,17 +575,40 @@ kubectl create secret generic db-credentials -n prod --from-literal=DB_USER=admi
 helm upgrade --install petshelter ./petshelter-chart -n prod -f petshelter-chart/values-prod.yaml
 ```
 
-**Op Minikube** heb je geen echt domein en geen Let's Encrypt. Overschrijf daarom die twee waarden met `--set`, en
-maak zelf een certificaat zoals in [les 8, sectie 6](../08-Ingress-and-Reverse-Proxies/ingress.md#6-https):
+**Op Minikube** werken twee waarden uit `values-prod.yaml` niet: het domein `petshelter.jouwdomein.be` wijst niet naar
+je laptop, en Let's Encrypt kan je laptop niet bereiken. Je **overschrijft** die twee waarden met `--set` (de rest
+van `values-prod.yaml` blijft gelden), en je maakt het certificaat zelf, zoals in
+[les 8, sectie 6](../08-Ingress-and-Reverse-Proxies/ingress.md#6-https):
 
 ```bash
-helm upgrade --install petshelter ./petshelter-chart -n prod -f petshelter-chart/values-prod.yaml \
-  --set ingress.host=petshelter.localhost --set ingress.tls.clusterIssuer=
+# 1. Namespace en Secrets
+kubectl create namespace prod
+kubectl create secret generic db-credentials -n prod --from-literal=DB_USER=admin --from-literal=DB_PASSWORD='een-ander-wachtwoord'
 kubectl create secret tls petshelter-tls -n prod --cert=tls.crt --key=tls.key
 
+# 2. De app: productie-values, maar met een lokale hostnaam en zonder cert-manager
+helm upgrade --install petshelter ./petshelter-chart -n prod -f petshelter-chart/values-prod.yaml \
+  --set ingress.host=petshelter.localhost \
+  --set ingress.tls.clusterIssuer=
+
+# 3. Controleren
 kubectl get pods -n prod          # 3 frontends, 3 backends, 1 database
 curl -k https://petshelter.localhost/
 helm list -A                      # petshelter in test én in prod
+```
+
+| `--set` | Waarom |
+|---|---|
+| `ingress.host=petshelter.localhost` | een naam die op je laptop naar `127.0.0.1` wijst |
+| `ingress.tls.clusterIssuer=` | leeg: de chart laat de cert-manager-annotation weg, want je gebruikt je eigen Secret `petshelter-tls` |
+
+Wil je eerst zien wat deze waarden opleveren? `helm template` toont de YAML zonder iets te installeren. Met
+`-s templates/ingress.yaml` toon je enkel de Ingress; dat is alleen een filter op wat je te zien krijgt:
+
+```bash
+helm template petshelter ./petshelter-chart -f petshelter-chart/values-prod.yaml \
+  --set ingress.host=petshelter.localhost --set ingress.tls.clusterIssuer= \
+  -s templates/ingress.yaml
 ```
 
 Dezelfde chart, twee omgevingen, en de verschillen staan in twee kleine bestanden.
