@@ -1,0 +1,27 @@
+# Een tweede app, in een eigen map en een eigen compose-project.
+# Traefik moet al draaien (../traefik). Pas de regel met  # <-- WIJZIG  aan, dan:
+#   docker compose up -d
+# Ververs https://whoami.jouwdomein.be een paar keer: "Hostname" wisselt tussen
+# de 3 replica's = load balancing, zonder één regel extra configuratie.
+
+services:
+  whoami:
+    image: traefik/whoami:v1.11
+    deploy:
+      replicas: 3
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.jouwdomein.be`)" # <-- WIJZIG
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      # Middleware: extra security headers op elk antwoord
+      - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.secure-headers.headers.frameDeny=true"
+      - "traefik.http.routers.whoami.middlewares=secure-headers"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

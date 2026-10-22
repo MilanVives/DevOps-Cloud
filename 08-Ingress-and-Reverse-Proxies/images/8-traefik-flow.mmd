@@ -1,0 +1,8 @@
+graph LR
+    R["Request<br/>https://whoami.jouwdomein.be"] --> E["EntryPoint<br/>websecure :443"]
+    E --> RO["Router<br/>Host(`whoami.jouwdomein.be`)"]
+    RO --> M["Middleware<br/>secure-headers"]
+    M --> S["Service<br/>load balancer"]
+    S --> C1["container 1"]
+    S --> C2["container 2"]
+    S --> C3["container 3"]

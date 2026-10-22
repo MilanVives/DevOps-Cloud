@@ -1,0 +1,12 @@
+graph LR
+    subgraph M["Met Traefik"]
+        B2["Browser"] -->|":80 / :443"| T["Traefik"]
+        T -->|"app1.domein.be"| C1["app 1"]
+        T -->|"app2.domein.be"| C2["app 2"]
+        T -->|"app3.domein.be"| C3["app 3"]
+    end
+    subgraph Z["Zonder reverse proxy"]
+        B1["Browser"] -->|":3000"| A1["app 1"]
+        B1 -->|":8081"| A2["app 2"]
+        B1 -->|":9000"| A3["app 3"]
+    end

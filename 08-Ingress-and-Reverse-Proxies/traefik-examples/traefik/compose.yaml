@@ -1,0 +1,41 @@
+# Traefik + een nginx-testsite
+# Vooraf, één keer:  docker network create traefik
+# Pas enkel de regel met  # <-- WIJZIG  aan, dan:  docker compose up -d
+
+services:
+  traefik:
+    image: traefik:v3.7
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      # Dashboard enkel op localhost van de server: geen gat in de firewall.
+      # Bereikbaar via:  ssh -L 8080:localhost:8080 user@server
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./traefik.yaml:/etc/traefik/traefik.yaml:ro
+      # Traefik maakt hier zelf acme.json aan (met chmod 600)
+      - ./letsencrypt:/letsencrypt
+      # Traefik leest de labels van je containers via de Docker API
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-test
+    restart: unless-stopped
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    # Geen ports: nodig, Traefik praat met de container over het traefik-netwerk
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.rule=Host(`test.jouwdomein.be`)" # <-- WIJZIG
+      - "traefik.http.routers.nginx.entrypoints=websecure"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true

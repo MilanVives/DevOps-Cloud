@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant J as Jij
+    participant D as Docker
+    participant T as Traefik
+    J->>D: docker compose up -d (container met labels)
+    D-->>T: event via /var/run/docker.sock: nieuwe container
+    T->>D: lees labels + IP op netwerk traefik
+    Note over T: traefik.enable=true<br/>rule = Host(`whoami.jouwdomein.be`)<br/>→ nieuwe router, zonder herstart
+    T->>T: certificaat nodig? vraag aan bij Let's Encrypt

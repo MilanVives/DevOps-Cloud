@@ -155,7 +155,8 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 - [Slides](08-Ingress-and-Reverse-Proxies/ingress-slides.md) - Marp-slidedeck versie voor in de les
 - [Ingress Advanced](08-Ingress-and-Reverse-Proxies/ingress-advanced.md) - Werking van een controller, IngressClass, cert-manager in detail, Traefik in productie, middlewares, Gateway API
 - [Ingress-voorbeelden](08-Ingress-and-Reverse-Proxies/ingress-examples/) - Alle YAML-bestanden uit de les
-- [Traefik met Docker](08-Ingress-and-Reverse-Proxies/Traefik.md) en [voorbeelden](08-Ingress-and-Reverse-Proxies/traefik-examples/) - Reverse proxy met automatische SSL, buiten Kubernetes
+- [Traefik met Docker](08-Ingress-and-Reverse-Proxies/Traefik.md) en [voorbeelden](08-Ingress-and-Reverse-Proxies/traefik-examples/) - Reverse proxy met automatische SSL, buiten Kubernetes: kopiëren naar de server, waarden aanpassen, starten; dashboard via SSH-tunnel
+- [Traefik-slides](08-Ingress-and-Reverse-Proxies/traefik-slides.md) - Marp-slidedeck versie voor in de les
 - [Nginx](08-Ingress-and-Reverse-Proxies/Nginx.md) en [voorbeelden](08-Ingress-and-Reverse-Proxies/nginx-examples/) - Klassieke reverse proxy configuratie
 
 ## [Les 9 – CI/CD](09-CI-CD/)

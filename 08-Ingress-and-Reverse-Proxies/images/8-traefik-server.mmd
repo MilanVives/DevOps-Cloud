@@ -1,0 +1,12 @@
+graph LR
+    I["Internet"] -->|"80 / 443"| FW["Firewall<br/>open: 22, 80, 443"]
+    L["Jouw laptop"] -->|"22 (SSH-tunnel)"| FW
+    subgraph S["Server"]
+        FW --> T["Traefik<br/>0.0.0.0:80, 0.0.0.0:443"]
+        FW -.->|"tunnel"| DB["Dashboard<br/>127.0.0.1:8080"]
+        DB --- T
+        subgraph N["Docker-netwerk traefik"]
+            T --> NG["nginx-test"]
+            T --> W["whoami x3"]
+        end
+    end

@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant T as Traefik
+    participant LE as Let's Encrypt
+    participant DNS as DNS
+    T->>LE: certificaat voor test.jouwdomein.be?
+    LE-->>T: bewijs het: zet token X klaar
+    LE->>DNS: A-record test.jouwdomein.be?
+    DNS-->>LE: 203.0.113.10 (jouw server)
+    LE->>T: GET http://test.jouwdomein.be/.well-known/acme-challenge/X (poort 80)
+    T-->>LE: token X
+    LE-->>T: certificaat, 90 dagen geldig
+    Note over T: bewaard in letsencrypt/acme.json<br/>automatisch vernieuwd

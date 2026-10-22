@@ -1,0 +1,4 @@
+graph LR
+    B["Browser<br/>test.jouwdomein.be"] -->|"1. wat is het IP?"| D["DNS<br/>A-record<br/>test → 203.0.113.10<br/>whoami → 203.0.113.10"]
+    D -->|"2. 203.0.113.10"| B
+    B -->|"3. HTTPS, Host: test.jouwdomein.be"| S["Server 203.0.113.10<br/>Traefik kiest op hostnaam"]

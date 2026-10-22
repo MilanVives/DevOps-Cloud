@@ -1,0 +1,56 @@
+# Traefik statische configuratie - M. DIMA VIVES
+# Kopieer samen met compose.yaml naar de server.
+# Pas enkel de regels met  # <-- WIJZIG  aan.
+
+# Dashboard op poort 8080 (entrypoint "traefik").
+# "insecure" = zonder login. Dat mag hier omdat poort 8080 in compose.yaml
+# enkel op 127.0.0.1 van de server open staat: je bereikt het via een SSH-tunnel.
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+    # Al het HTTP-verkeer doorsturen naar HTTPS
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    # Elke router op 443 krijgt automatisch een Let's Encrypt-certificaat.
+    # Testen zonder rate limits? Zet hier tijdelijk letsencrypt-staging.
+    http:
+      tls:
+        certResolver: letsencrypt
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: jouw.naam@student.vives.be # <-- WIJZIG
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+  # Testcertificaten: de browser vertrouwt ze niet, maar geen rate limits
+  letsencrypt-staging:
+    acme:
+      email: jouw.naam@student.vives.be # <-- WIJZIG
+      storage: /letsencrypt/acme-staging.json
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      httpChallenge:
+        entryPoint: web
+
+providers:
+  docker:
+    # Enkel containers met het label traefik.enable=true
+    exposedByDefault: false
+    # Via dit netwerk bereikt Traefik de containers
+    network: traefik
+
+log:
+  level: INFO # DEBUG als je fouten zoekt
+
+# Eén regel per request in `docker logs traefik`
+accessLog: {}

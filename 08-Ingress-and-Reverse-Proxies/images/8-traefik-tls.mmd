@@ -1,0 +1,3 @@
+graph LR
+    U["Browser"] -->|"HTTPS (versleuteld)"| T["Traefik<br/>certificaat uit acme.json"]
+    T -->|"HTTP, over netwerk traefik"| C["containers<br/>weten niets van certificaten"]

@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant B as Browser (laptop)
+    participant L as ssh op laptop<br/>localhost:8080
+    participant S as sshd op server<br/>:22
+    participant T as Traefik<br/>127.0.0.1:8080
+    B->>L: http://localhost:8080/dashboard/
+    L->>S: versleuteld, door de SSH-verbinding
+    S->>T: localhost:8080 (op de server)
+    T-->>S: dashboard
+    S-->>L: versleuteld terug
+    L-->>B: dashboard in je browser

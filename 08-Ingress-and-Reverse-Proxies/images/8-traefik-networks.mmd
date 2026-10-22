@@ -1,0 +1,9 @@
+graph LR
+    I["Internet"] --> T["Traefik"]
+    subgraph P["netwerk traefik (gedeeld)"]
+        T --> F["frontend"]
+        T --> A["api"]
+    end
+    subgraph B["netwerk backend (internal: true)"]
+        A --> DB[("database")]
+    end
