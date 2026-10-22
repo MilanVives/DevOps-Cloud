@@ -1,0 +1,6 @@
+graph LR
+    B["Browser<br/>petshelter.jouwdomein.be/api/pets"] -->|"DNS A-record"| L["LoadBalancer<br/>1 extern IP<br/>(cloudprovider)"]
+    L --> T["Traefik<br/>Ingress controller"]
+    T -->|"regel: /api"| S1["backend-service<br/>ClusterIP"]
+    T -->|"regel: /"| S2["frontend-service<br/>ClusterIP"]
+    T -->|"host: whoami..."| S3["whoami<br/>ClusterIP"]

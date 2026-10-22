@@ -34,18 +34,18 @@ Volledige uitgewerkte notities: [ingress.md](ingress.md) · YAML: [ingress-examp
 
 ---
 
-## Zo werkt geen echte website
+## In de cloud: elke app een `LoadBalancer`?
 
 <style scoped>section { font-size: 28px; }</style>
 
-Tot nu toe: `http://<minikube-ip>:32500` of `kubectl port-forward`
+Je cluster draait bij een cloudprovider. Van buiten bereikbaar = `type: LoadBalancer`
+→ publiek IP → DNS A-record → `petshelter.jouwdomein.be` werkt
 
-- Niemand typt `:32500` in de adresbalk
-- Elke app een eigen poort → 10 apps = 10 poorten
-- Geen HTTPS, geen domeinnaam
+**Een domeinnaam heb je dus niet nodig een Ingress voor.** Maar met 10 apps:
 
-Een echte website: **poort 80/443**, een **domeinnaam**,
-en vaak meerdere apps achter één adres (`/` en `/api`)
+- 10 `LoadBalancer`s = 10 publieke IP's = **10 keer betalen**
+- enkel IP + poort: geen "`/api` → backend, `/` → frontend"
+- elke app regelt **zelf** HTTPS en certificaten
 
 ---
 
@@ -69,6 +69,38 @@ en vaak meerdere apps achter één adres (`/` en `/api`)
 - Zonder Ingress: elke app een `LoadBalancer` → elk een extern IP, elk betalen
 - Met Ingress: **één** `LoadBalancer` voor Traefik
 - Je apps blijven gewone `ClusterIP`-Services
+
+Ingress **vervangt** de `LoadBalancer` niet: hij zit erachter
+
+---
+
+## Van domeinnaam tot Service
+
+![w:1000](images/8-ingress-cloud.png)
+
+<style scoped>section { font-size: 27px; }</style>
+
+Alle domeinnamen → **één IP** → Traefik kijkt naar **hostnaam en pad** → juiste Service
+
+Zelfde idee als Traefik met Docker: daar komen de regels uit **labels**, hier uit **Ingress-objecten**
+
+---
+
+## Waarom dan oefenen op Minikube?
+
+<style scoped>section { font-size: 24px; } table { font-size: 22px; }</style>
+
+Lokaal heb je **geen** Ingress nodig (`port-forward` volstaat). Minikube = **gratis oefencluster**
+
+| | Cloud (Final) | Minikube (deze les) |
+|---|---|---|
+| Traefik + Ingress-YAML | `helm install`, `kubectl apply` | **hetzelfde** |
+| Extern IP van Traefik | publiek IP van de cloudprovider | `minikube tunnel` speelt de cloud na: `127.0.0.1` |
+| Domeinnaam | DNS A-record | `*.localhost` → `127.0.0.1` |
+| HTTPS | Let's Encrypt (cert-manager) | zelfgemaakt certificaat |
+| Fouten maken | kost geld, rate limits | gratis |
+
+Alles werkt ongewijzigd in de cloud: enkel **IP's en domeinnamen** veranderen
 
 ---
 
@@ -131,7 +163,8 @@ kubectl get svc -n traefik        # LoadBalancer  EXTERNAL-IP <pending>
 
 <style scoped>section { font-size: 27px; }</style>
 
-Minikube heeft geen cloud die een IP uitdeelt. In een **apart venster**, open laten:
+Dit is de **ene** `LoadBalancer`. Minikube heeft geen cloud die een IP uitdeelt:
+`minikube tunnel` speelt die rol na. In een **apart venster**, open laten:
 
 ```bash
 minikube tunnel                   # vraagt je wachtwoord (poort 80/443)

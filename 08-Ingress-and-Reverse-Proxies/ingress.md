@@ -2,21 +2,57 @@
 
 ## Waar gaat deze les over?
 
-Je PetShelter-app draait in Kubernetes. Om ze vanuit je browser te openen, gebruikte je tot nu toe een
-**NodePort** (`http://<minikube-ip>:32500`) of `kubectl port-forward`. Dat is prima om te testen, maar zo werkt geen
-echte website:
+Een Ingress is iets voor een **echte cluster in de cloud**. Daar begint het verhaal dus ook.
 
-- niemand typt een poortnummer zoals `:32500` in de adresbalk;
-- elke app krijgt een eigen poort, dus 10 apps = 10 poorten om te onthouden en open te zetten;
-- er is geen HTTPS en geen domeinnaam.
+### Het probleem: in de cloud
 
-Een echte website is bereikbaar op **poort 80 (HTTP) en 443 (HTTPS)**, met een **domeinnaam**, en vaak draaien er
-meerdere apps achter hetzelfde adres (`/` is de website, `/api` de backend). Dat regel je in Kubernetes met een
-**Ingress**.
+Je PetShelter draait in een cluster bij een cloudprovider (in de Final: je eigen cluster). Om een app bereikbaar te
+maken vanaf het internet, ken je één Service-type: `LoadBalancer`. De cloudprovider maakt dan een load balancer aan
+met een **publiek IP-adres**. Daar kun je ook een domeinnaam naar laten wijzen (een DNS A-record), dus
+`petshelter.jouwdomein.be` werkt al. **Een domeinnaam heb je niet nodig een Ingress voor.**
+
+Maar met 10 apps loop je vast:
+
+- **10 apps = 10 `LoadBalancer`s = 10 publieke IP-adressen**, en de cloudprovider rekent ze **elk apart** aan;
+- een `LoadBalancer` kijkt enkel naar IP en poort. Hij kan niet zeggen "`/api` naar de backend, `/` naar de frontend"
+  of "`shop.jouwdomein.be` hierheen, `blog.jouwdomein.be` daarheen";
+- elke app moet **zelf** HTTPS en certificaten regelen.
+
+### De oplossing: één ingang met regels
+
+Met een **Ingress** heb je nog maar **één** `LoadBalancer` nodig: voor de **Ingress controller** (bij ons **Traefik**).
+Alle domeinnamen wijzen naar dat ene IP-adres. Traefik bekijkt elk request (hostnaam en pad) en stuurt het naar de juiste
+Service. HTTPS regelt Traefik voor al je apps tegelijk. Je apps zelf blijven gewone `ClusterIP`-Services, onbereikbaar
+van buiten.
+
+![Van domeinnaam tot Service](images/8-ingress-cloud.png)
+
+Een Ingress **vervangt de `LoadBalancer` dus niet**: hij zit erachter, en zorgt dat je er maar één nodig hebt.
+
+> Ken je de Docker-versie uit [Traefik.md](Traefik.md)? Daar is het precies hetzelfde: de domeinnamen wijzen naar het
+> IP van de server, Traefik luistert op 80/443 en kiest de container op basis van **labels**. In Kubernetes komen de
+> regels uit **Ingress-objecten**, en het IP komt van een `LoadBalancer`.
+
+### Waarom dan oefenen op Minikube?
+
+Op je eigen laptop **heb je geen Ingress nodig**: voor één app volstaat `kubectl port-forward` of een NodePort. We
+gebruiken Minikube enkel als **gratis oefencluster**:
+
+| | In de cloud (Final) | Op Minikube (deze les) |
+|---|---|---|
+| Traefik installeren | `helm install traefik ...` | **hetzelfde** |
+| Je Ingress-YAML | `kubectl apply -f ...` | **hetzelfde** |
+| Het externe IP van Traefik | de cloudprovider geeft een publiek IP | `minikube tunnel` speelt de cloud na: `127.0.0.1` |
+| Domeinnaam | DNS A-record naar dat IP | `*.localhost` wijst vanzelf naar `127.0.0.1` |
+| HTTPS | Let's Encrypt via cert-manager | een zelfgemaakt certificaat |
+| Fouten maken | kost geld en rate limits | gratis |
+
+Alles wat je hier schrijft, werkt ongewijzigd in de cloud. Enkel de **IP-adressen** en de **domeinnamen** veranderen.
 
 **Na deze les kan je:**
+- uitleggen waarom je in de cloud een Ingress gebruikt in plaats van een `LoadBalancer` per app;
 - uitleggen wat een Ingress en een Ingress controller zijn, en waarom je ze allebei nodig hebt;
-- Traefik installeren als Ingress controller op Minikube;
+- Traefik installeren als Ingress controller, geoefend op Minikube;
 - verkeer routeren op **pad** (`/api`) en op **hostnaam** (`api.mijnsite.be`);
 - HTTPS instellen, lokaal met een eigen certificaat en in de cloud met Let's Encrypt;
 - de meest voorkomende Ingress-fouten zelf oplossen.
@@ -105,8 +141,9 @@ De **IngressClass** `traefik` is de naam waarmee je in je Ingress zegt: "deze re
 
 ### `EXTERNAL-IP <pending>`: `minikube tunnel`
 
-Traefik vraagt een `LoadBalancer`-Service aan. In de cloud krijg je daar een publiek IP-adres voor. Minikube heeft dat
-niet, en daarom blijft het `<pending>`. Los dat op met een tunnel, in een **apart terminalvenster** dat je open laat:
+Traefik vraagt een `LoadBalancer`-Service aan: dat is de **ene** `LoadBalancer` uit de inleiding. In de cloud krijg je
+daar een publiek IP-adres voor. Minikube heeft geen cloudprovider die IP-adressen uitdeelt, en daarom blijft het
+`<pending>`. `minikube tunnel` speelt die rol van de cloud na. Start hem in een **apart terminalvenster** dat je open laat:
 
 ```bash
 minikube tunnel        # vraagt je wachtwoord: poort 80 en 443 openen vereist admin-rechten
