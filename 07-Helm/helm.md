@@ -28,6 +28,8 @@ Secret. Dat werkt, maar:
 - [PetShelter naar Helm, stap voor stap](helm-petshelter.md): de manifests uit les 6 omzetten naar een chart (de basis
   voor de Final);
 - [Helm: alle commando's](helm-commands.md): naslag met alle commando's en opties;
+- [Prometheus en Grafana met Helm](helm-prometheus-grafana.md): demo van Helm als package manager, een volledige
+  monitoringstack met één commando;
 - [Helm Advanced](helm-advanced.md): helpers, hooks, tests, dependencies, charts publiceren, Helm in CI/CD.
 
 ---
@@ -110,6 +112,8 @@ helm uninstall mijn-podinfo                 # alles van deze release weg
 Zo installeer je ook grote, bekende software met één commando: Traefik ([les 8](../08-Ingress-and-Reverse-Proxies/ingress.md)),
 Prometheus en Grafana (monitoring), cert-manager, … Kijk op [Artifact Hub](https://artifacthub.io) wie de chart
 maakt: kies bij voorkeur de chart van het project zelf (een "official" of "verified publisher").
+
+Een volledig voorbeeld, van zoeken tot verwijderen: [Prometheus en Grafana met Helm](helm-prometheus-grafana.md).
 
 ---
 
@@ -371,6 +375,8 @@ Voeg `-n <namespace>` toe als je release niet in `default` staat.
 4. **Voorwaarde.** Voeg aan de hello-chart een `templates/ingress.yaml` toe die enkel aangemaakt wordt als
    `ingress.enabled` op `true` staat. Controleer met `helm template` met en zonder `--set ingress.enabled=true`.
 5. **PetShelter.** Volg [PetShelter naar Helm](helm-petshelter.md) en deploy een test- en een productieomgeving.
+6. **Package manager.** Zoek de officiële chart van Prometheus op [Artifact Hub](https://artifacthub.io) en installeer
+   Prometheus en Grafana in je Minikube-cluster. Volg [Prometheus en Grafana met Helm](helm-prometheus-grafana.md).
 
 **Volgende les:** je app van buitenaf bereikbaar maken met [Ingress](../08-Ingress-and-Reverse-Proxies/ingress.md).
 

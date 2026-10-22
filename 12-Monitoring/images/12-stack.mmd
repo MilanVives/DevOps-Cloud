@@ -1,0 +1,7 @@
+flowchart LR
+  NE[node-exporter<br/>nodes] --> P[Prometheus]
+  KSM[kube-state-metrics<br/>Kubernetes-objecten] --> P
+  K[kubelet<br/>containers] --> P
+  APP[jouw app<br/>/metrics] --> P
+  P --> G[Grafana<br/>dashboards]
+  P --> AM[Alertmanager] --> MAIL[mail / Slack / Teams]

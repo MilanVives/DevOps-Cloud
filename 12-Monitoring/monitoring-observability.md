@@ -126,6 +126,9 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=50Gi
 ```
 
+Stap voor stap, getest op Minikube, met Grafana, PromQL, ServiceMonitors en alerts:
+[Prometheus en Grafana (kube-prometheus-stack)](prometheus-grafana-helm.md).
+
 **Manual configuratie:**
 ```yaml
 apiVersion: v1

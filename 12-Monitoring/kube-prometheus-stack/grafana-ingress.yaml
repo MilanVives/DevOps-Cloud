@@ -1,0 +1,8 @@
+# Grafana bereikbaar via Traefik op http://grafana.localhost
+# helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring --reuse-values -f grafana-ingress.yaml
+grafana:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts:
+      - grafana.localhost

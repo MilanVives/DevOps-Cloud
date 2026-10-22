@@ -145,6 +145,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 - [Slides](07-Helm/helm-slides.md) - Marp-slidedeck versie voor in de les
 - [PetShelter naar Helm](07-Helm/helm-petshelter.md) - Stap voor stap de manifests uit les 6 omzetten naar een chart (basis voor de Final)
 - [Helm: alle commando's](07-Helm/helm-commands.md) - Naslag: alle Helm-commando's en opties, `helm create`, van Helm 2 naar 3/4
+- [Prometheus en Grafana met Helm](07-Helm/helm-prometheus-grafana.md) - Demo van Helm als package manager: zoeken, repo toevoegen, installeren, configureren, upgraden, rollback, verwijderen (StatefulSets, DaemonSet, CRDs, operator)
 - [Helm Advanced](07-Helm/helm-advanced.md) - Helpers, values-schema, tests en hooks, dependencies, publiceren, veilig upgraden, Helm in CI/CD, secrets
 - Voorbeelden: [hello-chart](07-Helm/hello-chart/) en [petshelter-chart](07-Helm/petshelter-chart/)
 
@@ -217,6 +218,7 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 ## [Les 12 – Advanced Monitoring & Observability](12-Monitoring/)
 
 - [Monitoring & Observability](12-Monitoring/monitoring-observability.md) - Prometheus, Grafana, Jaeger, APM, SLA/SLO/SLI
+- [Prometheus en Grafana (kube-prometheus-stack)](12-Monitoring/prometheus-grafana-helm.md) - Praktisch: de stack installeren met Helm, PromQL, Grafana-dashboards en Ingress, je eigen app monitoren met een ServiceMonitor, alerts
 - **Onderwerpen:**
   - Observability: metrics, logs, distributed tracing
   - Prometheus voor metrics collection en alerting

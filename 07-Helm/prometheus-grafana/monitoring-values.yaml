@@ -1,0 +1,38 @@
+# Eigen instellingen voor prometheus-community/kube-prometheus-stack.
+# Alle mogelijke waarden: helm show values prometheus-community/kube-prometheus-stack
+
+# Vast wachtwoord voor Grafana (enkel voor een lokale demo; anders laat je de chart er een genereren)
+grafana:
+  adminPassword: devops123
+
+prometheus:
+  prometheusSpec:
+    retention: 7d              # metrics 7 dagen bewaren
+    storageSpec:               # PVC per Prometheus-pod: metrics overleven een herstart
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+
+# Op Minikube en kind luisteren deze onderdelen van het control plane enkel op 127.0.0.1:
+# Prometheus kan ze niet bereiken en toont ze als "down". Op een lokale cluster zet je ze uit.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false

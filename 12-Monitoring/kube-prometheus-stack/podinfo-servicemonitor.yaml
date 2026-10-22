@@ -1,0 +1,17 @@
+# Prometheus de metrics van podinfo laten ophalen.
+# Vooraf: helm install podinfo podinfo/podinfo   (in namespace default)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: podinfo
+  namespace: default
+  labels:
+    release: monitoring          # verplicht: Prometheus kijkt enkel naar ServiceMonitors met dit label
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: podinfo   # labels van de Service
+  endpoints:
+    - port: http                 # naam van de poort in de Service
+      path: /metrics
+      interval: 15s
