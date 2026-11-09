@@ -112,4 +112,4 @@ Je resultaat verschijnt onder **Releases**. De PE1-controles blijven ook zichtba
 
 ## 📅 Deadline
 
-> **vrijdag 4 december 2026 om 13:59**.
+> **vrijdag 4 december 2026 om 23:59**.
