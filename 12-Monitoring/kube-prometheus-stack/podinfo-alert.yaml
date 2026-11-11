@@ -1,0 +1,20 @@
+# Eigen alertregel: afgaan als podinfo 1 minuut lang geen werkende pods heeft.
+# Test: kubectl scale deploy podinfo --replicas=0
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: podinfo-alerts
+  namespace: default
+  labels:
+    release: monitoring          # verplicht, net als bij een ServiceMonitor
+spec:
+  groups:
+    - name: podinfo
+      rules:
+        - alert: PodinfoDown
+          expr: kube_deployment_status_replicas_available{deployment="podinfo"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: podinfo heeft geen werkende pods

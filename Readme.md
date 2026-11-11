@@ -218,8 +218,9 @@ Dit vak wordt gebruikt voor twee klasgroepen, elk met hun eigen evaluatie:
 
 ## [Les 12 – Advanced Monitoring & Observability](12-Monitoring/)
 
-- [Monitoring & Observability](12-Monitoring/monitoring-observability.md) - Prometheus, Grafana, Jaeger, APM, SLA/SLO/SLI
-- [Prometheus en Grafana (kube-prometheus-stack)](12-Monitoring/prometheus-grafana-helm.md) - Praktisch: de stack installeren met Helm, PromQL, Grafana-dashboards en Ingress, je eigen app monitoren met een ServiceMonitor, alerts
+- [Prometheus en Grafana (kube-prometheus-stack)](12-Monitoring/prometheus-grafana-helm.md) - Praktisch: metrics, counter en gauge, de stack installeren met Helm, PromQL, Grafana-dashboards en Ingress, je eigen app monitoren met een ServiceMonitor, alerts
+- [Slides](12-Monitoring/monitoring-slides.md) - Marp-slidedeck versie voor in de les
+- [Monitoring & Observability](12-Monitoring/monitoring-observability.md) - Verdieping: metrics, logs en traces, golden signals, SLI/SLO en error budgets, je eigen app instrumenteren
 - **Onderwerpen:**
   - Observability: metrics, logs, distributed tracing
   - Prometheus voor metrics collection en alerting
