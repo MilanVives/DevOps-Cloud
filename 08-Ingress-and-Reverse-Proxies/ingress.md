@@ -139,6 +139,41 @@ kubectl get svc -n traefik          # traefik   LoadBalancer   ...   EXTERNAL-IP
 
 De **IngressClass** `traefik` is de naam waarmee je in je Ingress zegt: "deze regels zijn voor Traefik".
 
+### Hoe vindt Traefik jouw Ingress?
+
+De Helm chart maakt die IngressClass zelf aan (`kubectl get ingressclass traefik -o yaml`):
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: traefik
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: traefik.io/ingress-controller
+```
+
+Kubernetes stuurt je Ingress naar niemand. Traefik **volgt zelf alle Ingresses** in de cluster via de API en kiest
+de zijne:
+
+```
+Ingress:      ingressClassName: traefik
+                 │
+                 ▼
+IngressClass: traefik  (gemaakt door de Helm chart)
+                 │   controller: traefik.io/ingress-controller
+                 ▼
+Traefik:      "dat ben ik" → voert de regels uit
+```
+
+- De **naam** `traefik` kies je zelf (het is de naam van de Helm release). De **controller**-string
+  `traefik.io/ingress-controller` ligt vast: daar herkent Traefik zichzelf aan.
+- Staat er een andere class in je Ingress (bv. `nginx`), dan negeert Traefik hem. Zo kunnen twee controllers naast
+  elkaar draaien.
+- De chart maakt `traefik` de **default class**. Een Ingress **zonder** `ingressClassName` krijgt hem automatisch.
+  Zet hem toch altijd expliciet: dat is duidelijker, en het blijft werken als er ooit een tweede controller bijkomt.
+
 ### `EXTERNAL-IP <pending>`: `minikube tunnel`
 
 Traefik vraagt een `LoadBalancer`-Service aan: dat is de **ene** `LoadBalancer` uit de inleiding. In de cloud krijg je

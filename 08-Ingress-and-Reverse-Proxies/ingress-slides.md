@@ -256,6 +256,28 @@ curl http://localhost/          # de PetShelter-frontend, zonder poortnummer
 
 ---
 
+## Hoe weet de Ingress dat hij voor Traefik is?
+
+<style scoped>section { font-size: 26px; } pre { font-size: 0.7em; }</style>
+
+```
+Ingress:      ingressClassName: traefik
+                 ▼
+IngressClass: traefik  (gemaakt door de Helm chart)
+                 ▼     controller: traefik.io/ingress-controller
+Traefik:      "dat ben ik" → voert de regels uit
+```
+
+```bash
+kubectl get ingressclass traefik -o yaml
+```
+
+- Traefik **volgt alle Ingresses** via de API en kiest enkel de zijne
+- Andere class (bv. `nginx`) → Traefik negeert hem
+- De chart maakt `traefik` **default**: zonder `ingressClassName` werkt het ook, maar zet hem altijd expliciet
+
+---
+
 <!-- _class: lead -->
 
 ## 5. Routeren op pad en hostnaam
