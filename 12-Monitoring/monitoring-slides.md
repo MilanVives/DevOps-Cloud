@@ -269,6 +269,43 @@ Eigen dashboard: *New dashboard → Add visualization → Prometheus* → query 
 
 ---
 
+## Dashboards importeren van grafana.com
+
+![bg right:50% contain](images/12-grafana-import-id.png)
+
+<style scoped>section { font-size: 26px; }</style>
+
+Duizenden kant-en-klare dashboards: https://grafana.com/grafana/dashboards/
+
+1. Kies een dashboard, kopieer het **ID**
+2. Grafana → *Dashboards → New → Import*
+3. ID plakken → **Load**
+
+Getest op de stack van vandaag: **15661** en **8171**
+
+---
+
+## Import: de juiste data source kiezen
+
+![bg right:50% contain](images/12-grafana-import-datasource.png)
+
+<style scoped>section { font-size: 26px; }</style>
+
+Onderaan staat een veld voor de **data source**
+(de naam verschilt per dashboard, hier `DS__VICTORIAMETRICS-PROD-ALL`)
+
+→ kies **Prometheus** → **Import**
+
+Vergeten of verkeerd gekozen → panelen tonen `No data`
+
+---
+
+<!-- Resultaat: dashboard 15661 -->
+
+![bg contain](images/12-grafana-import-15661.png)
+
+---
+
 ## Grafana via Ingress
 
 <style scoped>pre { font-size: 0.72em; }</style>
