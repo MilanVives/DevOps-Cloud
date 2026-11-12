@@ -189,6 +189,31 @@ Grafana bewaart zelf **geen** metrics: elk paneel is een PromQL-query die Grafan
 source** Prometheus is al ingesteld. Een eigen dashboard: *Dashboards → New → New dashboard → Add visualization*, kies
 *Prometheus* en plak een query uit sectie 4.
 
+### Dashboards importeren van grafana.com
+
+Op https://grafana.com/grafana/dashboards/ staan duizenden dashboards die anderen gemaakt hebben. Elk dashboard heeft
+een **ID**. Importeren gaat zo:
+
+1. Zoek een dashboard op grafana.com en kopieer het ID.
+2. In Grafana: *Dashboards → New → Import*.
+3. Plak het ID in het veld bij *Find and import dashboards …* en klik **Load**.
+
+   ![Import dashboard: ID 15661 ingevuld](images/12-grafana-import-id.png)
+
+4. Onderaan staat een veld om de **data source** te kiezen. Kies **Prometheus** en klik **Import**. De naam van dat
+   veld verschilt per dashboard: bij 15661 heet het `DS__VICTORIAMETRICS-PROD-ALL`, omdat de maker het met
+   VictoriaMetrics bouwde. Dat maakt niet uit: hun queries zijn gewone PromQL.
+
+   ![De data source Prometheus kiezen](images/12-grafana-import-datasource.png)
+
+Getest op de stack van deze les: **15661** en **8171**.
+
+![Dashboard 15661 na het importeren](images/12-grafana-import-15661.png)
+
+Niet elk dashboard past bij je cluster. Een dashboard verwacht bepaalde metrics en labels; ontbreken die, dan tonen
+panelen `No data`. Zo blijft *Node Storage* hierboven leeg. Vind je te veel lege panelen, probeer dan een ander
+dashboard.
+
 ### Grafana via Ingress
 
 Met Traefik uit [les 8](../08-Ingress-and-Reverse-Proxies/ingress.md) heb je geen port-forward nodig. De chart
@@ -422,6 +447,7 @@ precies de dingen die de monitoring **in** de cluster niet kan melden als de clu
 | target staat er, maar `DOWN` | verkeerd `path`, of de app toont geen `/metrics` |
 | query geeft `Empty query result` | tikfout in de metric of een label, of het target is (nog) niet `UP` |
 | je PrometheusRule verschijnt niet bij *Alerts* | label `release: monitoring` ontbreekt |
+| geïmporteerd dashboard toont overal `No data` | bij het importeren niet de data source **Prometheus** gekozen; importeer opnieuw |
 | Grafana: wachtwoord klopt niet | lees het uit de Secret (sectie 5); `prom-operator` uit oude tutorials werkt niet meer |
 | na `helm uninstall` blijven er dingen staan | PVC's en CRDs worden met opzet niet verwijderd |
 
